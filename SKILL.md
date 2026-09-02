@@ -5,8 +5,9 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.2.0 (includes the anchor-based insert feature, #11). See
-> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+> Verified against `scaffold-cli` v0.3.0 (includes the anchor-based insert feature, #11, and the
+> `init` command, #15). See [Staying in sync](#staying-in-sync) below if your installed version
+> disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -102,13 +103,19 @@ project matures, and a plain clone can't carry that divergence — the next `git
 overwrites it. (Same reasoning Nx gives for "local generators" living in the workspace instead of
 a consumed package.)
 
-Start empty and grow it as the project needs new templates. This is project source, not
-disposable tooling — commit it, don't put it under `.tools/` or `.gitignore` it:
+Bootstrap it with `scaffold init` (a pure local file write — no network calls, no `git init`)
+rather than hand-authoring a root `jig.yaml` from scratch. This is project source, not disposable
+tooling — commit it, don't put it under `.tools/` or `.gitignore` it:
 
 ```bash
-mkdir -p scaffolding-code
-# author jig.yaml here as templates are needed - see scaffold-templates' README for the format
+scaffold init scaffolding-code
 ```
+
+This writes a starter `jig.yaml` with an intentionally empty `values: []` — `scaffold list`/
+`scaffold create` against it correctly refuse to do anything ("registers no scaffolds") until a
+scaffold is actually registered. Edit it to add the project's first real one as templates are
+needed; the starter file's own comments link to `scaffold-templates`' README for the format.
+`scaffold init` refuses to clobber an existing `jig.yaml` unless `--force` is passed.
 
 This resolves automatically (`./scaffolding-code` is the engine's last-resort default) as long as
 `scaffold` runs from the project root; commit a `.scaffold.yaml` there too
