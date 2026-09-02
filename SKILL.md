@@ -17,66 +17,100 @@ produce; don't hand-write what `create` can generate instead.
 
 ## 1. Check it's installed
 
+First work out the scope from where *this file* lives: if its path resolves under your home
+directory's global skills folder (e.g. `~/.claude/skills/scaffold-cli/SKILL.md`), this is a
+**global** install. If it resolves inside a specific project instead
+(`<project-root>/.claude/skills/scaffold-cli/SKILL.md`), this is a **project-scoped** install for
+that project. If you genuinely can't tell, default to project-scoped — it's the more contained
+choice.
+
+Many shells reset environment variables and PATH between commands but keep the working directory,
+so exporting PATH once and expecting it to still apply on the next command doesn't work — invoke
+the binary by a path that's still valid on its own instead.
+
+**Global:**
+
 ```bash
-scaffold --version
-```
-
-If that's already on PATH, skip to step 2. Otherwise, install a prebuilt release binary (never
-build from source for this) — where it goes should match where *this skill* was installed:
-
-**This skill is installed for one project only** (`.claude/skills/scaffold-cli` inside that
-project, not `~/.claude/skills/`) — install `scaffold-cli` scoped to that same project instead of
-system-wide, so it doesn't leak into other projects. Override the install directory, then add it
-to PATH for this session only:
-
-```bash
-# Linux / macOS, from the project root
-export SCAFFOLD_CLI_INSTALL_DIR="$PWD/.tools/scaffold-cli"
-curl -fsSL https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.sh | sh
-export PATH="$SCAFFOLD_CLI_INSTALL_DIR:$PATH"
+scaffold --version || curl -fsSL https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.sh | sh
 ```
 
 ```powershell
-# Windows, from the project root
-$env:SCAFFOLD_CLI_INSTALL_DIR = "$PWD\.tools\scaffold-cli"
-irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
-$env:PATH = "$env:SCAFFOLD_CLI_INSTALL_DIR;$env:PATH"
+scaffold --version; if (-not $?) { irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex }
 ```
 
-Add `.tools/` to the project's `.gitignore` if it isn't already. (On Windows the script also
-permanently adds that folder to the user's PATH as a side effect of installing — harmless, but
-worth knowing it isn't undone by deleting the folder later.)
-
-**This skill is installed globally** (`~/.claude/skills/scaffold-cli`) — install `scaffold-cli`
-globally too, with the plain defaults:
+**Project-scoped** — install into the project instead of system-wide, so it doesn't leak into
+other projects (run from the project root):
 
 ```bash
-# Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.sh | sh
+test -x .tools/scaffold-cli/scaffold || (
+  export SCAFFOLD_CLI_INSTALL_DIR="$PWD/.tools/scaffold-cli"
+  curl -fsSL https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.sh | sh
+)
 ```
 
 ```powershell
-# Windows
-irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
+if (-not (Test-Path .tools\scaffold-cli\scaffold.exe)) {
+  $env:SCAFFOLD_CLI_INSTALL_DIR = "$PWD\.tools\scaffold-cli"
+  irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
+}
 ```
 
-Both scripts fetch the right binary for the platform, verify its checksum, and put it on PATH.
-Pin a version with `SCAFFOLD_CLI_VERSION=v0.3.0` (env) / `-Version v0.3.0` (PowerShell) if the
-task needs a specific release. Anything else (a manual archive from the
+Add `.tools/` to the project's `.gitignore` if it isn't already. (On Windows the install script
+also permanently adds that folder to the user's PATH as a side effect — harmless, but it isn't
+undone by deleting the folder later.)
+
+**For the rest of this skill, `scaffold` means whichever binary you resolved above** — bare
+`scaffold` for a global install, or `.tools/scaffold-cli/scaffold` (`.tools\scaffold-cli\scaffold.exe`
+on Windows) for a project-scoped one. Substitute accordingly in every command below.
+
+Both scripts fetch the right binary for the platform and verify its checksum; the global variant
+also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
+`SCAFFOLD_CLI_VERSION=v0.3.0` (env) / `-Version v0.3.0` (PowerShell) if the task needs a specific
+release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
 the environment.
 
 ## 2. Make sure scaffold-templates is reachable
 
-`scaffold` needs a checkout of scaffold-templates to read from. Resolution order (first match
-wins): `--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
-`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
-as a last resort. If none resolve, clone it:
+`scaffold` needs a checkout of `scaffold-templates` to read from. Where to put it follows the same
+scope as step 1 — don't just clone it to some arbitrary path and hope the resolution order finds
+it; pick one of these two deliberately:
+
+**Project-scoped:** clone it *next to the `scaffold-cli` binary itself* — `.tools/scaffold-cli/scaffolding-code`,
+sibling to `.tools/scaffold-cli/scaffold` from step 1 — not the project root. The engine already
+looks in the executable's own directory for a `scaffolding-code` folder before falling back to the
+current directory, so this resolves automatically regardless of where `scaffold` is invoked from,
+with no flag/env var/config file needed. It also means one `.gitignore` entry (`.tools/`) covers
+both the binary and the templates checkout:
 
 ```bash
-git clone https://github.com/yusronMu77/scaffold-templates.git scaffolding-code
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
 ```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
+```
+
+**Global:** don't re-clone it per project — clone one shared copy once, then point every future
+invocation at it permanently with a config file. A file persists across shells; an exported env
+var doesn't survive to the next command, so don't use `SCAFFOLD_CODE` for this. Write the
+*absolute* path — `.scaffold.yaml` does not expand `~`:
+
+```bash
+git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME/scaffold-templates"
+printf 'scaffolding_code: %s/scaffold-templates\n' "$HOME" > "$HOME/.scaffold.yaml"
+```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME\scaffold-templates"
+"scaffolding_code: $HOME\scaffold-templates" | Out-File "$HOME\.scaffold.yaml" -Encoding utf8
+```
+
+Full resolution order, if you need to override either default for a single invocation:
+`--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
+`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
+as a last resort.
 
 ## 3. Discover before generating
 
