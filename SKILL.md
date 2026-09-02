@@ -21,7 +21,34 @@ produce; don't hand-write what `create` can generate instead.
 scaffold --version
 ```
 
-If that fails, install a prebuilt release binary rather than building from source:
+If that's already on PATH, skip to step 2. Otherwise, install a prebuilt release binary (never
+build from source for this) — where it goes should match where *this skill* was installed:
+
+**This skill is installed for one project only** (`.claude/skills/scaffold-cli` inside that
+project, not `~/.claude/skills/`) — install `scaffold-cli` scoped to that same project instead of
+system-wide, so it doesn't leak into other projects. Override the install directory, then add it
+to PATH for this session only:
+
+```bash
+# Linux / macOS, from the project root
+export SCAFFOLD_CLI_INSTALL_DIR="$PWD/.tools/scaffold-cli"
+curl -fsSL https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.sh | sh
+export PATH="$SCAFFOLD_CLI_INSTALL_DIR:$PATH"
+```
+
+```powershell
+# Windows, from the project root
+$env:SCAFFOLD_CLI_INSTALL_DIR = "$PWD\.tools\scaffold-cli"
+irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
+$env:PATH = "$env:SCAFFOLD_CLI_INSTALL_DIR;$env:PATH"
+```
+
+Add `.tools/` to the project's `.gitignore` if it isn't already. (On Windows the script also
+permanently adds that folder to the user's PATH as a side effect of installing — harmless, but
+worth knowing it isn't undone by deleting the folder later.)
+
+**This skill is installed globally** (`~/.claude/skills/scaffold-cli`) — install `scaffold-cli`
+globally too, with the plain defaults:
 
 ```bash
 # Linux / macOS
