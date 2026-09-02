@@ -11,8 +11,23 @@ The skill itself is [SKILL.md](SKILL.md).
 
 ## Use it
 
-Copy this repo into your agent's skills folder, keeping the directory name so `name:` in the
-frontmatter matches the folder:
+Copy this skill into your agent's skills folder, keeping the directory name so `name:` in the
+frontmatter matches the folder. Every tagged release publishes a `scaffold-cli-skill.zip` — the
+`releases/latest/download/` link always resolves to the newest one:
+
+```bash
+mkdir -p .claude/skills/scaffold-cli
+curl -fsSL https://github.com/yusronMu77/scaffold-cli-skill/releases/latest/download/scaffold-cli-skill.zip -o /tmp/scaffold-cli-skill.zip
+unzip -o /tmp/scaffold-cli-skill.zip -d .claude/skills/scaffold-cli
+```
+
+```powershell
+New-Item -ItemType Directory -Force .claude/skills/scaffold-cli | Out-Null
+Invoke-WebRequest https://github.com/yusronMu77/scaffold-cli-skill/releases/latest/download/scaffold-cli-skill.zip -OutFile "$env:TEMP\scaffold-cli-skill.zip"
+Expand-Archive "$env:TEMP\scaffold-cli-skill.zip" .claude/skills/scaffold-cli -Force
+```
+
+Or track `main` directly instead of a pinned release:
 
 ```bash
 git clone https://github.com/yusronMu77/scaffold-cli-skill.git .claude/skills/scaffold-cli
