@@ -63,23 +63,47 @@ undone by deleting the folder later.)
 `scaffold` for a global install, or `.tools/scaffold-cli/scaffold` (`.tools\scaffold-cli\scaffold.exe`
 on Windows) for a project-scoped one. Substitute accordingly in every command below.
 
-Both scripts fetch the right binary for the platform, verify its checksum, and put it on PATH.
-Pin a version with `SCAFFOLD_CLI_VERSION=v0.3.0` (env) / `-Version v0.3.0` (PowerShell) if the
-task needs a specific release. Anything else (a manual archive from the
+Both scripts fetch the right binary for the platform and verify its checksum; the global variant
+also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
+`SCAFFOLD_CLI_VERSION=v0.3.0` (env) / `-Version v0.3.0` (PowerShell) if the task needs a specific
+release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
 the environment.
 
 ## 2. Make sure scaffold-templates is reachable
 
-`scaffold` needs a checkout of scaffold-templates to read from. Resolution order (first match
-wins): `--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
-`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
-as a last resort. If none resolve, clone it:
+`scaffold` needs a checkout of `scaffold-templates` to read from. Where to put it follows the same
+scope as step 1 — don't just clone it to some arbitrary path and hope the resolution order finds
+it; pick one of these two deliberately:
+
+**Project-scoped:** clone it into the project root as `scaffolding-code`. This is the engine's
+built-in last-resort default, so it works with no flag or config file as long as you run
+`scaffold` from the project root (the same relative-path reasoning as step 1 — no env var needed):
 
 ```bash
 git clone https://github.com/yusronMu77/scaffold-templates.git scaffolding-code
 ```
+
+**Global:** don't re-clone it per project — clone one shared copy once, then point every future
+invocation at it permanently with a config file. A file persists across shells; an exported env
+var doesn't survive to the next command, so don't use `SCAFFOLD_CODE` for this. Write the
+*absolute* path — `.scaffold.yaml` does not expand `~`:
+
+```bash
+git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME/scaffold-templates"
+printf 'scaffolding_code: %s/scaffold-templates\n' "$HOME" > "$HOME/.scaffold.yaml"
+```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME\scaffold-templates"
+"scaffolding_code: $HOME\scaffold-templates" | Out-File "$HOME\.scaffold.yaml" -Encoding utf8
+```
+
+Full resolution order, if you need to override either default for a single invocation:
+`--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
+`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
+as a last resort.
 
 ## 3. Discover before generating
 
