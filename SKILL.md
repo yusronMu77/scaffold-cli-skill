@@ -76,29 +76,14 @@ the environment.
 
 ## 2. Make sure scaffold-templates is reachable
 
-`scaffold` needs a checkout of `scaffold-templates` to read from. Where to put it follows the same
-scope as step 1 — don't just clone it to some arbitrary path and hope the resolution order finds
-it; pick one of these two deliberately:
+`scaffold` needs a `scaffolding-code` tree to read from — either the shared
+[scaffold-templates](https://github.com/yusronMu77/scaffold-templates) library, or one the project
+authors and owns itself. Which one depends on scope:
 
-**Project-scoped:** clone it *next to the `scaffold-cli` binary itself* — `.tools/scaffold-cli/scaffolding-code`,
-sibling to `.tools/scaffold-cli/scaffold` from step 1 — not the project root. The engine already
-looks in the executable's own directory for a `scaffolding-code` folder before falling back to the
-current directory, so this resolves automatically regardless of where `scaffold` is invoked from,
-with no flag/env var/config file needed. It also means one `.gitignore` entry (`.tools/`) covers
-both the binary and the templates checkout:
-
-```bash
-git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
-```
-
-```powershell
-git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
-```
-
-**Global:** don't re-clone it per project — clone one shared copy once, then point every future
-invocation at it permanently with a config file. A file persists across shells; an exported env
-var doesn't survive to the next command, so don't use `SCAFFOLD_CODE` for this. Write the
-*absolute* path — `.scaffold.yaml` does not expand `~`:
+**Global install → the shared library, always.** Don't re-clone it per project — clone one shared
+copy once, then point every future invocation at it permanently with a config file. A file
+persists across shells; an exported env var doesn't survive to the next command, so don't use
+`SCAFFOLD_CODE` for this. Write the *absolute* path — `.scaffold.yaml` does not expand `~`:
 
 ```bash
 git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME/scaffold-templates"
@@ -109,6 +94,42 @@ printf 'scaffolding_code: %s/scaffold-templates\n' "$HOME" > "$HOME/.scaffold.ya
 git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME\scaffold-templates"
 "scaffolding_code: $HOME\scaffold-templates" | Out-File "$HOME\.scaffold.yaml" -Encoding utf8
 ```
+
+**Project-scoped install → default to the project owning its own templates**, not a read-only
+clone of the shared library. A project's own conventions (its base POM tweaks, its house auth
+middleware, its own file layout) naturally diverge from the generic shared templates as the
+project matures, and a plain clone can't carry that divergence — the next `git pull` just
+overwrites it. (Same reasoning Nx gives for "local generators" living in the workspace instead of
+a consumed package.)
+
+Start empty and grow it as the project needs new templates. This is project source, not
+disposable tooling — commit it, don't put it under `.tools/` or `.gitignore` it:
+
+```bash
+mkdir -p scaffolding-code
+# author jig.yaml here as templates are needed - see scaffold-templates' README for the format
+```
+
+This resolves automatically (`./scaffolding-code` is the engine's last-resort default) as long as
+`scaffold` runs from the project root; commit a `.scaffold.yaml` there too
+(`scaffolding_code: ./scaffolding-code`) if it also needs to work from subdirectories.
+
+If the project genuinely has no customization needs yet and just wants the shared library as-is,
+clone it next to the `scaffold-cli` binary from step 1 instead — same disposable/re-fetchable
+reasoning as the binary itself, and one `.gitignore` entry (`.tools/`) covers both:
+
+```bash
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
+```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
+```
+
+Full resolution order, if you need to override either default for a single invocation:
+`--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
+`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
+as a last resort.
 
 Full resolution order, if you need to override either default for a single invocation:
 `--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
