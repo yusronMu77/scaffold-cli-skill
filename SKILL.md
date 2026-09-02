@@ -52,12 +52,15 @@ test -x .tools/scaffold-cli/scaffold || (
 if (-not (Test-Path .tools\scaffold-cli\scaffold.exe)) {
   $env:SCAFFOLD_CLI_INSTALL_DIR = "$PWD\.tools\scaffold-cli"
   irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
+  # install.ps1 unconditionally adds $env:SCAFFOLD_CLI_INSTALL_DIR to the user's PATH permanently -
+  # undo that so a project-scoped install doesn't leak into the global environment.
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  $kept = ($userPath -split ";" | Where-Object { $_ -and $_ -ne $env:SCAFFOLD_CLI_INSTALL_DIR }) -join ";"
+  [Environment]::SetEnvironmentVariable("Path", $kept, "User")
 }
 ```
 
-Add `.tools/` to the project's `.gitignore` if it isn't already. (On Windows the install script
-also permanently adds that folder to the user's PATH as a side effect — harmless, but it isn't
-undone by deleting the folder later.)
+Add `.tools/` to the project's `.gitignore` if it isn't already.
 
 **For the rest of this skill, `scaffold` means whichever binary you resolved above** — bare
 `scaffold` for a global install, or `.tools/scaffold-cli/scaffold` (`.tools\scaffold-cli\scaffold.exe`
