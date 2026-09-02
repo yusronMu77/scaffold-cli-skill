@@ -77,12 +77,19 @@ the environment.
 scope as step 1 — don't just clone it to some arbitrary path and hope the resolution order finds
 it; pick one of these two deliberately:
 
-**Project-scoped:** clone it into the project root as `scaffolding-code`. This is the engine's
-built-in last-resort default, so it works with no flag or config file as long as you run
-`scaffold` from the project root (the same relative-path reasoning as step 1 — no env var needed):
+**Project-scoped:** clone it *next to the `scaffold-cli` binary itself* — `.tools/scaffold-cli/scaffolding-code`,
+sibling to `.tools/scaffold-cli/scaffold` from step 1 — not the project root. The engine already
+looks in the executable's own directory for a `scaffolding-code` folder before falling back to the
+current directory, so this resolves automatically regardless of where `scaffold` is invoked from,
+with no flag/env var/config file needed. It also means one `.gitignore` entry (`.tools/`) covers
+both the binary and the templates checkout:
 
 ```bash
-git clone https://github.com/yusronMu77/scaffold-templates.git scaffolding-code
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
+```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
 ```
 
 **Global:** don't re-clone it per project — clone one shared copy once, then point every future
