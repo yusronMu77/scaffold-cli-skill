@@ -131,11 +131,6 @@ Full resolution order, if you need to override either default for a single invoc
 `.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
 as a last resort.
 
-Full resolution order, if you need to override either default for a single invocation:
-`--scaffolding-code=<path>` flag → `SCAFFOLD_CODE` env var → `.scaffold.yaml` in the cwd →
-`.scaffold.yaml` in `$HOME` → a `scaffolding-code` folder next to the binary → `./scaffolding-code`
-as a last resort.
-
 ## 3. Discover before generating
 
 Flags are fully dynamic — which ones are valid depends on the template selected, and an unknown
@@ -186,17 +181,25 @@ anchors the template author already declared; `scaffold-cli` has no way to disco
 insertion point in a file it doesn't know about, so don't assume it can add a route to a file with
 no such rule — say so instead of hand-editing the file to compensate.
 
-## 6. Check health of a templates change
+## 6. Grow and validate templates deliberately
 
-If asked to validate a scaffold-templates change (not just consume it):
+Applies to a project-owned `scaffolding-code` (step 2) as much as to `scaffold-templates` itself —
+growing it well is deliberate work, not passive drift:
 
-```bash
-scaffold lint [<scaffold>] [--build]
-```
-
-`--build` additionally runs each combination's own `verify:` command against a real scratch build
-— slower, but the only way to confirm generated output actually compiles/tests, not just that
-templates parse.
+- **Extract, don't anticipate.** Add or update a template when the same manual pattern has shown
+  up for the second or third time in this project, not before a real repeat exists — a template
+  for a hypothetical future need is speculative complexity with nothing yet to check it against.
+- **Validate every change before considering it done**, the same way `scaffold-templates` does in
+  its own CI:
+  ```bash
+  scaffold lint [<scaffold>] [--build]
+  ```
+  `--build` additionally runs each combination's own `verify:` command against a real scratch
+  build — slower, but the only way to confirm generated output actually compiles/tests, not just
+  that templates parse.
+- **It's just a commit.** A project-owned `scaffolding-code` has no release process to go through
+  (unlike the shared library) — a change ships the moment it's committed, and the very next
+  `scaffold create` in this project already uses it.
 
 ## Staying in sync
 
