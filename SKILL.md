@@ -5,6 +5,9 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
+> Verified against `scaffold-cli` main @ 2026-09-02 (includes the anchor-based insert feature,
+> #11). See [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
 hardcoded in the binary — which scaffolds/versions/dimensions/templates/variables exist, and even
@@ -109,6 +112,19 @@ scaffold lint [<scaffold>] [--build]
 `--build` additionally runs each combination's own `verify:` command against a real scratch build
 — slower, but the only way to confirm generated output actually compiles/tests, not just that
 templates parse.
+
+## Staying in sync
+
+This document can drift from what the installed `scaffold-cli` actually does. Check first:
+`scaffold --version` against the "Verified against" line at the top of this file. If it differs,
+don't trust an exact flag or output shape here over reality — run `scaffold --help`,
+`scaffold create --help`, `scaffold list --help`, and `scaffold lint --help` and prefer their live
+output. The engine's own flags (`--dry-run`/`--print`/`--explain`/`--output`/`--scaffolding-code`/
+etc.) change rarely, but a mismatch is a reason to check, not to assume.
+
+If you're maintaining this skill (not just using it) and `scaffold-cli`'s actual CLI surface has
+drifted from what's documented above, edit this file directly, bump the "Verified against" line,
+and `git push` — `git pull` in an existing install picks it up, no release process needed.
 
 ## Reference
 
