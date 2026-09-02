@@ -5,8 +5,8 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` main @ 2026-09-02 (includes the anchor-based insert feature,
-> #11). See [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+> Verified against `scaffold-cli` v0.2.0 (includes the anchor-based insert feature, #11). See
+> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
