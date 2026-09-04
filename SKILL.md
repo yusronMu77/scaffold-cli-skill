@@ -214,18 +214,63 @@ Requires whatever `scaffold-cli` release includes issue #17 — check `scaffold 
 exists before relying on this section; if it doesn't, the installed version predates it.
 
 Instead of hand-authoring a `jig.yaml` from scratch, point `learn` at one already-written example
-(a real controller, a CDK stack, any single instance of a pattern the project repeats) and it calls
-an LLM once to separate invariant structure from variable names/paths/fields:
+(a real controller, a CDK stack, any single instance of a pattern the project repeats) and it
+separates invariant structure from variable names/paths/fields — normally by calling an LLM once.
+
+**You are already an LLM. Do the reasoning yourself and use `--draft`, not a provider call.**
+`learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
 
 ```bash
-scaffold learn <path-to-example> --output=<scratch-dir>
+scaffold learn <path-to-example> --output=<scratch-dir> --draft=-
 ```
 
+then write the draft as JSON to stdin (or write it to a file and pass `--draft=<path>` instead of
+`-`). Making `learn` call Anthropic/OpenAI itself when you're the one invoking it would be a
+second, separately-billed model call to do reasoning you can already do inline as part of this
+session — prefer `--draft` every time you're the caller. Reserve the plain
+`scaffold learn <path> --output=<dir>` form (which requires `ANTHROPIC_API_KEY` or
+`OPENAI_API_KEY`, auto-detected, `--provider=anthropic|openai` to disambiguate) for when a human
+runs it directly with no agent involved. `--draft` and `--provider`/`--model`/`--base-url` are
+mutually exclusive — `learn` rejects combining them rather than silently ignoring one.
+
+**The draft JSON schema** (`{}` = required unless noted):
+
+```json
+{
+  "name": "kebab-case-template-name",
+  "description": "One sentence describing what this template produces (optional)",
+  "variables": [
+    {"name": "ClassName", "prompt": "help text (optional)", "default": "Widget", "required": true}
+  ],
+  "computed": [
+    {"name": "ClassNameKebab", "value": "{{ .ClassName | kebabcase }}"}
+  ],
+  "files": [
+    {"path": "{{ .ClassName }}Controller.java", "content": "class {{ .ClassName }}Controller {}\n"}
+  ]
+}
+```
+
+Rules for filling it in, same ones a provider call is instructed with:
+
+- **One variable per concept**, named in its most natural canonical form as it appears in the
+  example (e.g. a Java class name in PascalCase: `Order`). Every other casing of that same concept
+  found in the example (kebab-case, camelCase, snake_case, UPPER_CASE, plural forms) is the *same*
+  variable piped through a filter in file **content** — `kebabcase`, `camelcase`, `snakecase`,
+  `upper`, `lower`, `title` are available (Sprig, already used everywhere else `scaffold-cli`
+  renders). Never declare a second variable for a different casing of the same concept.
+- **A file `path` may only use plain `{{ .Name }}`, never a piped filter** — Windows forbids `|` in
+  filenames, so `{{ .Name | kebabcase }}` cannot appear in a path. If a path needs a casing other
+  than a variable's own canonical form, declare a `computed` entry (`name` + a `value` template
+  expression building on a variable) and reference it as plain `{{ .ComputedName }}` in the path.
+  Piped filters are fine in file `content`, only paths forbid them.
+- `default` must be the literal value found in the example, so the draft, used unmodified,
+  reproduces the example exactly.
+- Every file that should be part of the template needs an entry; don't invent files that weren't
+  in the example, don't omit files that should regenerate with the instance.
+
 `--output` is required and must be a scratch location, never `scaffolding-code` directly — the
-result is a **draft**, not yet a live template. Requires exactly one of `ANTHROPIC_API_KEY` /
-`OPENAI_API_KEY` to be set (auto-detected; pass `--provider=anthropic|openai` to disambiguate if
-both happen to be set). This makes a real, billed call to whichever provider is configured — don't
-run it speculatively.
+result is a **draft**, not yet a live template.
 
 After it writes the draft, **review it like any other generated artifact before trusting it**:
 read the draft `jig.yaml` and templated files, diff them against the original example, and check
