@@ -221,11 +221,17 @@ separates invariant structure from variable names/paths/fields — normally by c
 `learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
 
 ```bash
-scaffold learn <path-to-example> --output=<scratch-dir> --draft=-
+scaffold learn <path-to-example> --output=<scratch-dir> --draft=- <<'JSON'
+{"name": "...", "variables": [...], "files": [...]}
+JSON
 ```
 
-then write the draft as JSON to stdin (or write it to a file and pass `--draft=<path>` instead of
-`-`). Making `learn` call Anthropic/OpenAI itself when you're the one invoking it would be a
+`--draft=-` reads the whole draft from stdin in one shot before `learn` does anything else, so the
+JSON has to be attached to the same invocation (a heredoc as above, or an equivalent pipe) — running
+the bare command first and trying to supply the JSON afterward doesn't work, since there's no
+process left listening for it by then. Prefer writing the draft to a file and passing
+`--draft=<path>` instead of `-` if the JSON is large or awkward to inline in a heredoc. Making
+`learn` call Anthropic/OpenAI itself when you're the one invoking it would be a
 second, separately-billed model call to do reasoning you can already do inline as part of this
 session — prefer `--draft` every time you're the caller. Reserve the plain
 `scaffold learn <path> --output=<dir>` form (which requires `ANTHROPIC_API_KEY` or
@@ -251,6 +257,9 @@ mutually exclusive — `learn` rejects combining them rather than silently ignor
 }
 ```
 
+`variables` and `files` are required (`computed` is not — omit it entirely unless some file `path`
+needs a casing other than a variable's own canonical form; see below).
+
 Rules for filling it in, same ones a provider call is instructed with:
 
 - **One variable per concept**, named in its most natural canonical form as it appears in the
@@ -264,6 +273,10 @@ Rules for filling it in, same ones a provider call is instructed with:
   than a variable's own canonical form, declare a `computed` entry (`name` + a `value` template
   expression building on a variable) and reference it as plain `{{ .ComputedName }}` in the path.
   Piped filters are fine in file `content`, only paths forbid them.
+- **A `computed` entry's `name` must be distinct from every variable name** — it's a separate
+  identifier added alongside the variables, not a way to override one. `learn` does not check this
+  itself, so a colliding name doesn't fail the draft: it silently shadows the variable's value
+  wherever both are referenced during rendering, with no error at any step.
 - `default` must be the literal value found in the example, so the draft, used unmodified,
   reproduces the example exactly.
 - Every file that should be part of the template needs an entry; don't invent files that weren't
