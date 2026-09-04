@@ -252,7 +252,8 @@ mutually exclusive — `learn` rejects combining them rather than silently ignor
     {"name": "ClassNameKebab", "value": "{{ .ClassName | kebabcase }}"}
   ],
   "files": [
-    {"path": "{{ .ClassName }}Controller.java", "content": "class {{ .ClassName }}Controller {}\n"}
+    {"path": "{{ .ClassName }}Controller.java", "content": "class {{ .ClassName }}Controller {}\n"},
+    {"path": "gitignore.tpl", "content": "target/\n", "target": ".gitignore"}
   ]
 }
 ```
@@ -274,16 +275,28 @@ Rules for filling it in, same ones a provider call is instructed with:
   expression building on a variable) and reference it as plain `{{ .ComputedName }}` in the path.
   Piped filters are fine in file `content`, only paths forbid them.
 - **A `computed` entry's `name` must be distinct from every variable name** — it's a separate
-  identifier added alongside the variables, not a way to override one. `learn` does not check this
-  itself, so a colliding name doesn't fail the draft: it silently shadows the variable's value
-  wherever both are referenced during rendering, with no error at any step.
+  identifier added alongside the variables, not a way to override one. A colliding name would
+  silently shadow the variable's value during rendering, so `learn` rejects it outright.
+- **Never name a variable `Name`, `Scaffold`, `Template` or `Data`.** Those four are reserved by
+  the engine (they're the values-file keys), and a variable using one would make every later
+  `scaffold create` fail. Use something specific: `EntityName`, `ClassName`, `ServiceName`.
+  `learn` rejects these, so a draft that uses one fails at write time rather than at generation
+  time.
+- **`target` is only for a file whose real name would be acted on inside the templates repo
+  itself.** `.gitignore` is the standard case: store it as `"path": "gitignore.tpl"` with
+  `"target": ".gitignore"`, so git doesn't apply it to the templates repository. Same for
+  `.dockerignore`. Every other file omits `target` entirely.
+- **`jig.yaml` and `_*.tpl` are reserved as `path` values** — the first is the manifest the draft
+  itself generates, the second holds shared template definitions that are never emitted as output.
+  `learn` rejects both.
 - `default` must be the literal value found in the example, so the draft, used unmodified,
   reproduces the example exactly.
 - Every file that should be part of the template needs an entry; don't invent files that weren't
   in the example, don't omit files that should regenerate with the instance.
 
 `--output` is required and must be a scratch location, never `scaffolding-code` directly — the
-result is a **draft**, not yet a live template.
+result is a **draft**, not yet a live template. It must also be empty (or not exist yet); pass
+`--force` only when you deliberately mean to overwrite what's already there.
 
 After it writes the draft, **review it like any other generated artifact before trusting it**:
 read the draft `jig.yaml` and templated files, diff them against the original example, and check
