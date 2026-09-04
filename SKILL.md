@@ -208,6 +208,33 @@ growing it well is deliberate work, not passive drift:
   (unlike the shared library) — a change ships the moment it's committed, and the very next
   `scaffold create` in this project already uses it.
 
+## 7. Learn a template from an existing example
+
+Requires whatever `scaffold-cli` release includes issue #17 — check `scaffold learn --help`
+exists before relying on this section; if it doesn't, the installed version predates it.
+
+Instead of hand-authoring a `jig.yaml` from scratch, point `learn` at one already-written example
+(a real controller, a CDK stack, any single instance of a pattern the project repeats) and it calls
+an LLM once to separate invariant structure from variable names/paths/fields:
+
+```bash
+scaffold learn <path-to-example> --output=<scratch-dir>
+```
+
+`--output` is required and must be a scratch location, never `scaffolding-code` directly — the
+result is a **draft**, not yet a live template. Requires exactly one of `ANTHROPIC_API_KEY` /
+`OPENAI_API_KEY` to be set (auto-detected; pass `--provider=anthropic|openai` to disambiguate if
+both happen to be set). This makes a real, billed call to whichever provider is configured — don't
+run it speculatively.
+
+After it writes the draft, **review it like any other generated artifact before trusting it**:
+read the draft `jig.yaml` and templated files, diff them against the original example, and check
+for anything over-generalized (a value templated that should have stayed literal) or
+under-generalized (a value left literal that should vary). Only once it looks right, move it into
+the project's real `scaffolding-code` tree (or `scaffold-templates`) as a normal template addition,
+same as if it had been hand-authored — `learn` does not wire it in for you. From that point on,
+regenerating instances goes through the ordinary `create` path (step 5) with zero further AI calls.
+
 ## Staying in sync
 
 This document can drift from what the installed `scaffold-cli` actually does. Check first:
