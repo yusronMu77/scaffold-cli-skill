@@ -301,10 +301,44 @@ result is a **draft**, not yet a live template. It must also be empty (or not ex
 After it writes the draft, **review it like any other generated artifact before trusting it**:
 read the draft `jig.yaml` and templated files, diff them against the original example, and check
 for anything over-generalized (a value templated that should have stayed literal) or
-under-generalized (a value left literal that should vary). Only once it looks right, move it into
-the project's real `scaffolding-code` tree (or `scaffold-templates`) as a normal template addition,
-same as if it had been hand-authored — `learn` does not wire it in for you. From that point on,
-regenerating instances goes through the ordinary `create` path (step 5) with zero further AI calls.
+under-generalized (a value left literal that should vary).
+
+**Do that self-review with `scaffold learn-review`, not by eyeballing the draft alone** — requires
+whatever `scaffold-cli` release includes issue #18; check `scaffold learn-review --help` and
+`scaffold learn-promote --help` exist first, and fall back to reading the draft by hand above if
+they don't. Every draft `learn` writes is marked a **candidate** in its `jig.yaml`
+(`candidate: true`): `create` and `lint` both refuse it outright (non-zero exit) — even one already
+sitting inside the real `scaffolding-code` tree — and `list` prints the same explanation in place
+of the variables it would otherwise show, since it's a browsing command and doesn't hard-fail.
+Either way, nothing renders a candidate until it's explicitly approved, so reviewing it in place is
+safe:
+
+```bash
+scaffold learn-review <draft-dir> <path-to-example>
+```
+
+This renders the draft using only its own declared defaults (the same way `create` would) and
+byte-compares the result against the original example folder — a correct draft's defaults must
+reproduce the example exactly, so ANY difference reported (a missing file, an extra file, or
+mismatched content) is a concrete, mechanically-found sign of over- or under-generalization, no
+second model call needed. Exit code is non-zero if anything is flagged; fix the draft's
+`jig.yaml`/files under `<draft-dir>` (or re-run `learn` on a cleaner example) and re-run
+`learn-review` until it reports clean.
+
+Once it's clean — or you've hand-edited the draft in an editor and are satisfied with it — approve
+it:
+
+```bash
+scaffold learn-promote <draft-dir>
+```
+
+This clears the `candidate:` flag (the only thing `create`/`list`/`lint` were refusing it for),
+preserving any comments or edits already in the file rather than rewriting it from scratch — this
+includes a note left directly on or above the `candidate:` line itself, the most natural place to
+record a review. Only now does the draft become a normal template: move/copy it into the project's
+real `scaffolding-code` tree (or `scaffold-templates`), same as if it had been hand-authored —
+`learn` does not wire it in for you, and neither does `learn-promote`. From that point on,
+regenerating instances goes through the ordinary `create` path (step 5) with zero further model calls.
 
 ## Staying in sync
 
