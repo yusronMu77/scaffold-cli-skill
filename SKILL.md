@@ -208,6 +208,104 @@ growing it well is deliberate work, not passive drift:
   (unlike the shared library) — a change ships the moment it's committed, and the very next
   `scaffold create` in this project already uses it.
 
+## 7. Learn a template from an existing example
+
+Requires whatever `scaffold-cli` release includes issue #17 — check `scaffold learn --help`
+exists before relying on this section; if it doesn't, the installed version predates it.
+
+Instead of hand-authoring a `jig.yaml` from scratch, point `learn` at one already-written example
+(a real controller, a CDK stack, any single instance of a pattern the project repeats) and it
+separates invariant structure from variable names/paths/fields — normally by calling an LLM once.
+
+**You are already an LLM. Do the reasoning yourself and use `--draft`, not a provider call.**
+`learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
+
+```bash
+scaffold learn <path-to-example> --output=<scratch-dir> --draft=- <<'JSON'
+{"name": "...", "variables": [...], "files": [...]}
+JSON
+```
+
+`--draft=-` reads the whole draft from stdin in one shot before `learn` does anything else, so the
+JSON has to be attached to the same invocation (a heredoc as above, or an equivalent pipe) — running
+the bare command first and trying to supply the JSON afterward doesn't work, since there's no
+process left listening for it by then. Prefer writing the draft to a file and passing
+`--draft=<path>` instead of `-` if the JSON is large or awkward to inline in a heredoc. Making
+`learn` call Anthropic/OpenAI itself when you're the one invoking it would be a
+second, separately-billed model call to do reasoning you can already do inline as part of this
+session — prefer `--draft` every time you're the caller. Reserve the plain
+`scaffold learn <path> --output=<dir>` form (which requires `ANTHROPIC_API_KEY` or
+`OPENAI_API_KEY`, auto-detected, `--provider=anthropic|openai` to disambiguate) for when a human
+runs it directly with no agent involved. `--draft` and `--provider`/`--model`/`--base-url` are
+mutually exclusive — `learn` rejects combining them rather than silently ignoring one.
+
+**The draft JSON schema** (`{}` = required unless noted):
+
+```json
+{
+  "name": "kebab-case-template-name",
+  "description": "One sentence describing what this template produces (optional)",
+  "variables": [
+    {"name": "ClassName", "prompt": "help text (optional)", "default": "Widget", "required": true}
+  ],
+  "computed": [
+    {"name": "ClassNameKebab", "value": "{{ .ClassName | kebabcase }}"}
+  ],
+  "files": [
+    {"path": "{{ .ClassName }}Controller.java", "content": "class {{ .ClassName }}Controller {}\n"},
+    {"path": "gitignore.tpl", "content": "target/\n", "target": ".gitignore"}
+  ]
+}
+```
+
+`variables` and `files` are required (`computed` is not — omit it entirely unless some file `path`
+needs a casing other than a variable's own canonical form; see below).
+
+Rules for filling it in, same ones a provider call is instructed with:
+
+- **One variable per concept**, named in its most natural canonical form as it appears in the
+  example (e.g. a Java class name in PascalCase: `Order`). Every other casing of that same concept
+  found in the example (kebab-case, camelCase, snake_case, UPPER_CASE, plural forms) is the *same*
+  variable piped through a filter in file **content** — `kebabcase`, `camelcase`, `snakecase`,
+  `upper`, `lower`, `title` are available (Sprig, already used everywhere else `scaffold-cli`
+  renders). Never declare a second variable for a different casing of the same concept.
+- **A file `path` may only use plain `{{ .Name }}`, never a piped filter** — Windows forbids `|` in
+  filenames, so `{{ .Name | kebabcase }}` cannot appear in a path. If a path needs a casing other
+  than a variable's own canonical form, declare a `computed` entry (`name` + a `value` template
+  expression building on a variable) and reference it as plain `{{ .ComputedName }}` in the path.
+  Piped filters are fine in file `content`, only paths forbid them.
+- **A `computed` entry's `name` must be distinct from every variable name** — it's a separate
+  identifier added alongside the variables, not a way to override one. A colliding name would
+  silently shadow the variable's value during rendering, so `learn` rejects it outright.
+- **Never name a variable `Name`, `Scaffold`, `Template` or `Data`.** Those four are reserved by
+  the engine (they're the values-file keys), and a variable using one would make every later
+  `scaffold create` fail. Use something specific: `EntityName`, `ClassName`, `ServiceName`.
+  `learn` rejects these, so a draft that uses one fails at write time rather than at generation
+  time.
+- **`target` is only for a file whose real name would be acted on inside the templates repo
+  itself.** `.gitignore` is the standard case: store it as `"path": "gitignore.tpl"` with
+  `"target": ".gitignore"`, so git doesn't apply it to the templates repository. Same for
+  `.dockerignore`. Every other file omits `target` entirely.
+- **`jig.yaml` and `_*.tpl` are reserved as `path` values** — the first is the manifest the draft
+  itself generates, the second holds shared template definitions that are never emitted as output.
+  `learn` rejects both.
+- `default` must be the literal value found in the example, so the draft, used unmodified,
+  reproduces the example exactly.
+- Every file that should be part of the template needs an entry; don't invent files that weren't
+  in the example, don't omit files that should regenerate with the instance.
+
+`--output` is required and must be a scratch location, never `scaffolding-code` directly — the
+result is a **draft**, not yet a live template. It must also be empty (or not exist yet); pass
+`--force` only when you deliberately mean to overwrite what's already there.
+
+After it writes the draft, **review it like any other generated artifact before trusting it**:
+read the draft `jig.yaml` and templated files, diff them against the original example, and check
+for anything over-generalized (a value templated that should have stayed literal) or
+under-generalized (a value left literal that should vary). Only once it looks right, move it into
+the project's real `scaffolding-code` tree (or `scaffold-templates`) as a normal template addition,
+same as if it had been hand-authored — `learn` does not wire it in for you. From that point on,
+regenerating instances goes through the ordinary `create` path (step 5) with zero further AI calls.
+
 ## Staying in sync
 
 This document can drift from what the installed `scaffold-cli` actually does. Check first:
