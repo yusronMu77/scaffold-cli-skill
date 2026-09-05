@@ -5,8 +5,9 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.2.0 (includes the anchor-based insert feature, #11). See
-> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+> Verified against `scaffold-cli` v0.3.0 (includes the anchor-based insert feature, #11, and the
+> `init` command, #15). See [Staying in sync](#staying-in-sync) below if your installed version
+> disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -52,12 +53,15 @@ test -x .tools/scaffold-cli/scaffold || (
 if (-not (Test-Path .tools\scaffold-cli\scaffold.exe)) {
   $env:SCAFFOLD_CLI_INSTALL_DIR = "$PWD\.tools\scaffold-cli"
   irm https://raw.githubusercontent.com/yusronMu77/scaffold-cli/main/install.ps1 | iex
+  # install.ps1 unconditionally adds $env:SCAFFOLD_CLI_INSTALL_DIR to the user's PATH permanently -
+  # undo that so a project-scoped install doesn't leak into the global environment.
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  $kept = ($userPath -split ";" | Where-Object { $_ -and $_ -ne $env:SCAFFOLD_CLI_INSTALL_DIR }) -join ";"
+  [Environment]::SetEnvironmentVariable("Path", $kept, "User")
 }
 ```
 
-Add `.tools/` to the project's `.gitignore` if it isn't already. (On Windows the install script
-also permanently adds that folder to the user's PATH as a side effect — harmless, but it isn't
-undone by deleting the folder later.)
+Add `.tools/` to the project's `.gitignore` if it isn't already.
 
 **For the rest of this skill, `scaffold` means whichever binary you resolved above** — bare
 `scaffold` for a global install, or `.tools/scaffold-cli/scaffold` (`.tools\scaffold-cli\scaffold.exe`
@@ -73,29 +77,14 @@ the environment.
 
 ## 2. Make sure scaffold-templates is reachable
 
-`scaffold` needs a checkout of `scaffold-templates` to read from. Where to put it follows the same
-scope as step 1 — don't just clone it to some arbitrary path and hope the resolution order finds
-it; pick one of these two deliberately:
+`scaffold` needs a `scaffolding-code` tree to read from — either the shared
+[scaffold-templates](https://github.com/yusronMu77/scaffold-templates) library, or one the project
+authors and owns itself. Which one depends on scope:
 
-**Project-scoped:** clone it *next to the `scaffold-cli` binary itself* — `.tools/scaffold-cli/scaffolding-code`,
-sibling to `.tools/scaffold-cli/scaffold` from step 1 — not the project root. The engine already
-looks in the executable's own directory for a `scaffolding-code` folder before falling back to the
-current directory, so this resolves automatically regardless of where `scaffold` is invoked from,
-with no flag/env var/config file needed. It also means one `.gitignore` entry (`.tools/`) covers
-both the binary and the templates checkout:
-
-```bash
-git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
-```
-
-```powershell
-git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
-```
-
-**Global:** don't re-clone it per project — clone one shared copy once, then point every future
-invocation at it permanently with a config file. A file persists across shells; an exported env
-var doesn't survive to the next command, so don't use `SCAFFOLD_CODE` for this. Write the
-*absolute* path — `.scaffold.yaml` does not expand `~`:
+**Global install → the shared library, always.** Don't re-clone it per project — clone one shared
+copy once, then point every future invocation at it permanently with a config file. A file
+persists across shells; an exported env var doesn't survive to the next command, so don't use
+`SCAFFOLD_CODE` for this. Write the *absolute* path — `.scaffold.yaml` does not expand `~`:
 
 ```bash
 git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME/scaffold-templates"
@@ -105,6 +94,43 @@ printf 'scaffolding_code: %s/scaffold-templates\n' "$HOME" > "$HOME/.scaffold.ya
 ```powershell
 git clone https://github.com/yusronMu77/scaffold-templates.git "$HOME\scaffold-templates"
 "scaffolding_code: $HOME\scaffold-templates" | Out-File "$HOME\.scaffold.yaml" -Encoding utf8
+```
+
+**Project-scoped install → default to the project owning its own templates**, not a read-only
+clone of the shared library. A project's own conventions (its base POM tweaks, its house auth
+middleware, its own file layout) naturally diverge from the generic shared templates as the
+project matures, and a plain clone can't carry that divergence — the next `git pull` just
+overwrites it. (Same reasoning Nx gives for "local generators" living in the workspace instead of
+a consumed package.)
+
+Bootstrap it with `scaffold init` (a pure local file write — no network calls, no `git init`)
+rather than hand-authoring a root `jig.yaml` from scratch. This is project source, not disposable
+tooling — commit it, don't put it under `.tools/` or `.gitignore` it:
+
+```bash
+scaffold init scaffolding-code
+```
+
+This writes a starter `jig.yaml` with an intentionally empty `values: []` — `scaffold list`/
+`scaffold create` against it correctly refuse to do anything ("registers no scaffolds") until a
+scaffold is actually registered. Edit it to add the project's first real one as templates are
+needed; the starter file's own comments link to `scaffold-templates`' README for the format.
+`scaffold init` refuses to clobber an existing `jig.yaml` unless `--force` is passed.
+
+This resolves automatically (`./scaffolding-code` is the engine's last-resort default) as long as
+`scaffold` runs from the project root; commit a `.scaffold.yaml` there too
+(`scaffolding_code: ./scaffolding-code`) if it also needs to work from subdirectories.
+
+If the project genuinely has no customization needs yet and just wants the shared library as-is,
+clone it next to the `scaffold-cli` binary from step 1 instead — same disposable/re-fetchable
+reasoning as the binary itself, and one `.gitignore` entry (`.tools/`) covers both:
+
+```bash
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools/scaffold-cli/scaffolding-code
+```
+
+```powershell
+git clone https://github.com/yusronMu77/scaffold-templates.git .tools\scaffold-cli\scaffolding-code
 ```
 
 Full resolution order, if you need to override either default for a single invocation:
@@ -162,17 +188,25 @@ anchors the template author already declared; `scaffold-cli` has no way to disco
 insertion point in a file it doesn't know about, so don't assume it can add a route to a file with
 no such rule — say so instead of hand-editing the file to compensate.
 
-## 6. Check health of a templates change
+## 6. Grow and validate templates deliberately
 
-If asked to validate a scaffold-templates change (not just consume it):
+Applies to a project-owned `scaffolding-code` (step 2) as much as to `scaffold-templates` itself —
+growing it well is deliberate work, not passive drift:
 
-```bash
-scaffold lint [<scaffold>] [--build]
-```
-
-`--build` additionally runs each combination's own `verify:` command against a real scratch build
-— slower, but the only way to confirm generated output actually compiles/tests, not just that
-templates parse.
+- **Extract, don't anticipate.** Add or update a template when the same manual pattern has shown
+  up for the second or third time in this project, not before a real repeat exists — a template
+  for a hypothetical future need is speculative complexity with nothing yet to check it against.
+- **Validate every change before considering it done**, the same way `scaffold-templates` does in
+  its own CI:
+  ```bash
+  scaffold lint [<scaffold>] [--build]
+  ```
+  `--build` additionally runs each combination's own `verify:` command against a real scratch
+  build — slower, but the only way to confirm generated output actually compiles/tests, not just
+  that templates parse.
+- **It's just a commit.** A project-owned `scaffolding-code` has no release process to go through
+  (unlike the shared library) — a change ships the moment it's committed, and the very next
+  `scaffold create` in this project already uses it.
 
 ## Staying in sync
 
