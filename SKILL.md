@@ -5,9 +5,10 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.3.0 (includes the anchor-based insert feature, #11, and the
-> `init` command, #15). See [Staying in sync](#staying-in-sync) below if your installed version
-> disagrees.
+> Verified against `scaffold-cli` v0.4.0 (includes the anchor-based insert feature, #11, the
+> `init` command, #15, and the full `scaffold learn` family — single/multi-example inference,
+> the `learn-review`/`learn-promote` gate, match-before-learn, and secret redaction). See
+> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -69,7 +70,7 @@ on Windows) for a project-scoped one. Substitute accordingly in every command be
 
 Both scripts fetch the right binary for the platform and verify its checksum; the global variant
 also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
-`SCAFFOLD_CLI_VERSION=v0.3.0` (env) / `-Version v0.3.0` (PowerShell) if the task needs a specific
+`SCAFFOLD_CLI_VERSION=v0.4.0` (env) / `-Version v0.4.0` (PowerShell) if the task needs a specific
 release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
@@ -210,12 +211,17 @@ growing it well is deliberate work, not passive drift:
 
 ## 7. Learn a template from an existing example
 
-Requires whatever `scaffold-cli` release includes issue #17 — check `scaffold learn --help`
-exists before relying on this section; if it doesn't, the installed version predates it.
-
 Instead of hand-authoring a `jig.yaml` from scratch, point `learn` at one already-written example
 (a real controller, a CDK stack, any single instance of a pattern the project repeats) and it
 separates invariant structure from variable names/paths/fields — normally by calling an LLM once.
+
+**Before scanning or inferring anything, `learn` checks whether an already-registered template's
+base shape (file names, directory structure) already matches the example folder.** On a confident
+match it prints the `scaffold create ...` invocation that already covers it and exits immediately —
+nothing scanned further, no provider call, no draft written — rather than growing a duplicate
+template in the registry. Check that output before treating `learn` as necessary at all: the
+pattern may already be covered. Pass `--skip-match` to force a fresh draft regardless (for a
+genuinely new pattern that happens to resemble an existing one).
 
 **You are already an LLM. Do the reasoning yourself and use `--draft`, not a provider call.**
 `learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
@@ -238,6 +244,15 @@ session — prefer `--draft` every time you're the caller. Reserve the plain
 `OPENAI_API_KEY`, auto-detected, `--provider=anthropic|openai` to disambiguate) for when a human
 runs it directly with no agent involved. `--draft` and `--provider`/`--model`/`--base-url` are
 mutually exclusive — `learn` rejects combining them rather than silently ignoring one.
+`--response-format=tool|json_schema` additionally picks how the `openai` provider asks for
+structured JSON back, only for a model that rejects forced tool_choice.
+
+**Only that live-provider-call path redacts secrets before sending anything externally** — before
+the scanned content reaches the model, `learn` replaces secret-shaped values (API keys, tokens,
+private key blocks, credentials embedded in a URL, etc.) with placeholders and reports which rule
+fired per file, never the secret text itself. This doesn't apply to `--draft`: when you supply a
+draft directly, you already read the raw files yourself and nothing left the machine, so there's
+nothing to redact against.
 
 **The draft JSON schema** (`{}` = required unless noted):
 
@@ -303,10 +318,8 @@ read the draft `jig.yaml` and templated files, diff them against the original ex
 for anything over-generalized (a value templated that should have stayed literal) or
 under-generalized (a value left literal that should vary).
 
-**Do that self-review with `scaffold learn-review`, not by eyeballing the draft alone** — requires
-whatever `scaffold-cli` release includes issue #18; check `scaffold learn-review --help` and
-`scaffold learn-promote --help` exist first, and fall back to reading the draft by hand above if
-they don't. Every draft `learn` writes is marked a **candidate** in its `jig.yaml`
+**Do that self-review with `scaffold learn-review`, not by eyeballing the draft alone.** Every
+draft `learn` writes is marked a **candidate** in its `jig.yaml`
 (`candidate: true`): `create` and `lint` both refuse it outright (non-zero exit) — even one already
 sitting inside the real `scaffolding-code` tree — and `list` prints the same explanation in place
 of the variables it would otherwise show, since it's a browsing command and doesn't hard-fail.
@@ -341,9 +354,7 @@ real `scaffolding-code` tree (or `scaffold-templates`), same as if it had been h
 regenerating instances goes through the ordinary `create` path (step 5) with zero further model calls.
 
 **Two or more similar examples available? Generalize across all of them in one draft, not one at a
-time.** Requires whatever `scaffold-cli` release includes issue #19 — check `scaffold learn --help`
-mentions more than one positional path before relying on this; if it doesn't, the installed version
-predates it. When ≥2 existing instances of the same pattern are available, prefer this over running
+time.** When ≥2 existing instances of the same pattern are available, prefer this over running
 `learn` separately on each one: a draft built from only a single instance risks hard-coding a value
 that actually varies across the others, or the reverse.
 
