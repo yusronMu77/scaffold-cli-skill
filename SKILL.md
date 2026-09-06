@@ -340,6 +340,43 @@ real `scaffolding-code` tree (or `scaffold-templates`), same as if it had been h
 `learn` does not wire it in for you, and neither does `learn-promote`. From that point on,
 regenerating instances goes through the ordinary `create` path (step 5) with zero further model calls.
 
+**Two or more similar examples available? Generalize across all of them in one draft, not one at a
+time.** Requires whatever `scaffold-cli` release includes issue #19 — check `scaffold learn --help`
+mentions more than one positional path before relying on this; if it doesn't, the installed version
+predates it. When ≥2 existing instances of the same pattern are available, prefer this over running
+`learn` separately on each one: a draft built from only a single instance risks hard-coding a value
+that actually varies across the others, or the reverse.
+
+If you're supplying `--draft` yourself (the common case, per the rule above — you're already an
+LLM): read every example, not just the first, and write ONE draft JSON whose
+`variables`/`computed`/`files` cover every instance you looked at — same schema, same rules, no
+changes. The one thing this adds: each variable's `default` must be the literal value from the
+**first** example path specifically (the one you'll pass first below), even though the variable
+itself was generalized by comparing it against the others. This isn't something `learn` enforces —
+it's what `learn-review` (below) actually checks against.
+
+Calling a provider directly instead (no `--draft`) takes the extra examples as additional
+positionals in the same invocation:
+
+```bash
+scaffold learn <path-1> <path-2> [<path-3> ...] --output=<scratch-dir> --provider=...
+```
+
+All instances are sent to the model in a single call so it can generalize across them — a single
+`<path>` still behaves exactly as before, this is purely additive. The combined size of everything
+scanned across every path still has to fit in one call's budget; if `learn` rejects it as too large,
+trim the examples down to just the pattern itself or use fewer of them, same "extract, don't
+anticipate" discipline as growing templates deliberately in step 6.
+
+Either way — `--draft` or a live provider call — review against the **first** example path
+specifically, not any of the others:
+
+```bash
+scaffold learn-review <draft-dir> <path-1>
+```
+
+`learn-promote` afterward is unchanged: `scaffold learn-promote <draft-dir>`.
+
 ## Staying in sync
 
 This document can drift from what the installed `scaffold-cli` actually does. Check first:
