@@ -5,12 +5,12 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.5.0 (includes the anchor-based insert feature, #11, the
-> `init` command, #15, and the full `scaffold learn` family — single/multi-example inference,
-> the `learn-review`/`learn-promote` gate, match-before-learn with an uncertain-match band,
-> `raw` (unrendered) draft files, hardened secret redaction, and 2-positional `create` for a
-> leaf-version scaffold). See [Staying in sync](#staying-in-sync) below if your installed
-> version disagrees.
+> Verified against `scaffold-cli` v0.5.1 (includes the anchor-based insert feature, #11, the
+> `init` command, #15, `flat_output` to skip the `<name>/` nesting, #53, and the full
+> `scaffold learn` family — single/multi-example inference, the `learn-review`/`learn-promote`
+> gate, match-before-learn with an uncertain-match band, `raw` (unrendered) draft files, hardened
+> secret redaction, and 2-positional `create` for a leaf-version scaffold). See
+> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -72,7 +72,7 @@ on Windows) for a project-scoped one. Substitute accordingly in every command be
 
 Both scripts fetch the right binary for the platform and verify its checksum; the global variant
 also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
-`SCAFFOLD_CLI_VERSION=v0.5.0` (env) / `-Version v0.5.0` (PowerShell) if the task needs a specific
+`SCAFFOLD_CLI_VERSION=v0.5.1` (env) / `-Version v0.5.1` (PowerShell) if the task needs a specific
 release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
@@ -196,6 +196,18 @@ anchors the template author already declared; `scaffold-cli` has no way to disco
 insertion point in a file it doesn't know about, so don't assume it can add a route to a file with
 no such rule — say so instead of hand-editing the file to compensate.
 
+If the target template declares `flat_output: true` in its `jig.yaml`, `create` writes straight
+into `--output` (default `.`) instead of nesting under `<output>/<name>/` — for a template whose
+own `files:` `target`s are already fully-qualified relative to the project root (e.g. laying files
+into an existing repo tree) rather than one that generates a new, self-contained `<name>` project
+directory. Whether a given scaffold does this is up to the template author, not something you
+choose per invocation.
+
+Without `--force`/`--skip-existing`, `create` reports exactly which files under the target already
+exist (`N file(s) already exist under <target>: ...`) rather than refusing the whole invocation
+just because the target directory itself is already there — two templates that share one `<name>`
+but write to non-overlapping paths no longer collide with each other's leftovers.
+
 ## 6. Grow and validate templates deliberately
 
 Applies to a project-owned `scaffolding-code` (step 2) as much as to `scaffold-templates` itself —
@@ -236,6 +248,12 @@ scores a high-but-not-confident shape overlap, it prints a one-time note with th
 before promoting the freshly-learned draft — it may turn out to be the same pattern with just
 enough variance to miss the confident-match bar.
 
+When it does scan, `learn` automatically skips common build/dependency-artifact directories the
+same way it already skips dot-directories — `node_modules`, `dist`, `build`, `target`, `bin`,
+`obj`, `__pycache__` — since a real, working example regenerates these normally and they're never
+part of the pattern being learned. Not configurable; rename a directory that should be scanned (or
+copy the example elsewhere) if it happens to share one of these names.
+
 **You are already an LLM. Do the reasoning yourself and use `--draft`, not a provider call.**
 `learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
 
@@ -266,6 +284,13 @@ private key blocks, credentials embedded in a URL, etc.) with placeholders and r
 fired per file, never the secret text itself. This doesn't apply to `--draft`: when you supply a
 draft directly, you already read the raw files yourself and nothing left the machine, so there's
 nothing to redact against.
+
+**A draft's file `path`s are relative to the scanned example folder itself, not the destination the
+template will eventually write to once registered.** Don't bake a real project's destination prefix
+(e.g. a per-instance nested subdirectory) into a draft's own `path`s — `learn-review` compares the
+draft's render byte-for-byte against that same example folder treated as the root, so a baked-in
+prefix reports the entire draft as mismatched. Add that nesting as a `target:` override afterward,
+once the draft is promoted and wired into the real templates tree.
 
 **The draft JSON schema** (`{}` = required unless noted):
 
@@ -298,6 +323,10 @@ Rules for filling it in, same ones a provider call is instructed with:
   variable piped through a filter in file **content** — `kebabcase`, `camelcase`, `snakecase`,
   `upper`, `lower`, `title` are available (Sprig, already used everywhere else `scaffold-cli`
   renders). Never declare a second variable for a different casing of the same concept.
+- **`flag` is optional — omit it unless the kebab-case of `name` would make a poor CLI flag** (e.g.
+  an abbreviation). Left unset, `learn` derives the flag automatically and writes it out explicitly
+  in the generated `jig.yaml` either way, so a promoted draft needs no manual `flag:` edit to be
+  usable via `--<flag>=value`.
 - **A file `path` may only use plain `{{ .Name }}`, never a piped filter** — Windows forbids `|` in
   filenames, so `{{ .Name | kebabcase }}` cannot appear in a path. If a path needs a casing other
   than a variable's own canonical form, declare a `computed` entry (`name` + a `value` template
@@ -330,7 +359,9 @@ Rules for filling it in, same ones a provider call is instructed with:
 
 `--output` is required and must be a scratch location, never `scaffolding-code` directly — the
 result is a **draft**, not yet a live template. It must also be empty (or not exist yet); pass
-`--force` only when you deliberately mean to overwrite what's already there.
+`--force` only when you deliberately mean to overwrite what's already there — `--force` clears the
+entire output dir first, so a stale file from a previous draft that no longer appears in the new
+one is removed rather than left behind.
 
 After it writes the draft, **review it like any other generated artifact before trusting it**:
 read the draft `jig.yaml` and templated files, diff them against the original example, and check
@@ -356,6 +387,16 @@ mismatched content) is a concrete, mechanically-found sign of over- or under-gen
 second model call needed. Exit code is non-zero if anything is flagged; fix the draft's
 `jig.yaml`/files under `<draft-dir>` (or re-run `learn` on a cleaner example) and re-run
 `learn-review` until it reports clean.
+
+A mismatch reported as differing only by line ending (CRLF vs LF) is flagged explicitly as such —
+the two printed blocks otherwise look byte-identical in a terminal since `\r` doesn't render
+visibly, so without the explicit flag it's easy to mistake for a `learn-review` bug rather than a
+real difference worth fixing (e.g. an example file saved with Windows line endings).
+
+If any draft file's `path` or content references `.Name` (the `<name>` positional `create` supplies
+at generation time), note `learn-review` has no such positional to draw from — it substitutes the
+example directory's own basename instead. Declare an explicit variable with a real `default` for
+anything that needs one during review.
 
 Once it's clean — or you've hand-edited the draft in an editor and are satisfied with it — approve
 it:
