@@ -5,10 +5,12 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.4.0 (includes the anchor-based insert feature, #11, the
+> Verified against `scaffold-cli` v0.5.0 (includes the anchor-based insert feature, #11, the
 > `init` command, #15, and the full `scaffold learn` family — single/multi-example inference,
-> the `learn-review`/`learn-promote` gate, match-before-learn, and secret redaction). See
-> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+> the `learn-review`/`learn-promote` gate, match-before-learn with an uncertain-match band,
+> `raw` (unrendered) draft files, hardened secret redaction, and 2-positional `create` for a
+> leaf-version scaffold). See [Staying in sync](#staying-in-sync) below if your installed
+> version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -70,7 +72,7 @@ on Windows) for a project-scoped one. Substitute accordingly in every command be
 
 Both scripts fetch the right binary for the platform and verify its checksum; the global variant
 also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
-`SCAFFOLD_CLI_VERSION=v0.4.0` (env) / `-Version v0.4.0` (PowerShell) if the task needs a specific
+`SCAFFOLD_CLI_VERSION=v0.5.0` (env) / `-Version v0.5.0` (PowerShell) if the task needs a specific
 release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
@@ -182,6 +184,11 @@ scaffold create -f base.yaml -f prod.yaml --name=payment-canary   # -f repeats, 
 A command-line flag always beats a values file. Prefer a values file over a long flag list once
 there are more than two or three variables to set.
 
+If `scaffold list <scaffold>` reports "no templates dimension - this version is itself the
+template; omit `<template>`", that scaffold's resolved version is a **leaf**: `create` takes
+exactly 2 positionals for it, `scaffold create <scaffold> <name>`, not 3 — don't pass a dummy
+`<template>` value to fill the slot.
+
 If the target template declares an anchor-based insert (`insert_after`/`insert_before` in a
 `jig.yaml` `files:` entry), `create` also splices into an already-existing file instead of only
 writing new ones — the output reports `Spliced into N existing file(s)`. This only works for
@@ -222,6 +229,12 @@ nothing scanned further, no provider call, no draft written — rather than grow
 template in the registry. Check that output before treating `learn` as necessary at all: the
 pattern may already be covered. Pass `--skip-match` to force a fresh draft regardless (for a
 genuinely new pattern that happens to resemble an existing one).
+
+Short of a confident match, `learn` also surfaces an **uncertain** one: if an existing template
+scores a high-but-not-confident shape overlap, it prints a one-time note with that template's
+`scaffold create ...` invocation and still proceeds with `learn` (no exit). Check that suggestion
+before promoting the freshly-learned draft — it may turn out to be the same pattern with just
+enough variance to miss the confident-match bar.
 
 **You are already an LLM. Do the reasoning yourself and use `--draft`, not a provider call.**
 `learn` also accepts an already-reasoned draft directly, skipping any provider/API key entirely:
@@ -268,7 +281,8 @@ nothing to redact against.
   ],
   "files": [
     {"path": "{{ .ClassName }}Controller.java", "content": "class {{ .ClassName }}Controller {}\n"},
-    {"path": "gitignore.tpl", "content": "target/\n", "target": ".gitignore"}
+    {"path": "gitignore.tpl", "content": "target/\n", "target": ".gitignore"},
+    {"path": "playbook.yml", "content": "- hosts: {{ hosts }}\n", "raw": true}
   ]
 }
 ```
@@ -297,6 +311,11 @@ Rules for filling it in, same ones a provider call is instructed with:
   `scaffold create` fail. Use something specific: `EntityName`, `ClassName`, `ServiceName`.
   `learn` rejects these, so a draft that uses one fails at write time rather than at generation
   time.
+- **`"raw": true` is only for a file already written in a foreign templating language** (Jinja,
+  Ansible, ERB, Handlebars, ...) whose own `{{ }}`/`{% %}` must survive untouched. Its `content` is
+  copied byte-for-byte with zero rendering — maps to `jig.yaml`'s `template: false`. Omit it
+  entirely for every ordinary file (the default, and by far the common case, is to template
+  normally through this engine's own `{{ }}` syntax).
 - **`target` is only for a file whose real name would be acted on inside the templates repo
   itself.** `.gitignore` is the standard case: store it as `"path": "gitignore.tpl"` with
   `"target": ".gitignore"`, so git doesn't apply it to the templates repository. Same for
@@ -379,12 +398,17 @@ scanned across every path still has to fit in one call's budget; if `learn` reje
 trim the examples down to just the pattern itself or use fewer of them, same "extract, don't
 anticipate" discipline as growing templates deliberately in step 6.
 
-Either way — `--draft` or a live provider call — review against the **first** example path
-specifically, not any of the others:
+Either way — `--draft` or a live provider call — pass `learn-review` every example directory in
+the same order `learn` used, not just the first:
 
 ```bash
-scaffold learn-review <draft-dir> <path-1>
+scaffold learn-review <draft-dir> <path-1> [<path-2> ...]
 ```
+
+`<path-1>` is still checked byte-for-byte against the draft's rendered defaults (a variable's
+`default` is always drawn from that first example specifically); every later `<path-N>` is now
+also checked structurally — it must have the same set of files as the draft's render — instead of
+being ignored.
 
 `learn-promote` afterward is unchanged: `scaffold learn-promote <draft-dir>`.
 
