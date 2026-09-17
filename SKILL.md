@@ -363,6 +363,12 @@ Rules for filling it in, same ones a provider call is instructed with:
   variable piped through a filter in file **content** — `kebabcase`, `camelcase`, `snakecase`,
   `upper`, `lower`, `title` are available (Sprig, already used everywhere else `scaffold-cli`
   renders). Never declare a second variable for a different casing of the same concept.
+- **Naming trap: `camelcase` yields PascalCase, not lowerCamelCase** (Sprig's `"order_status" |
+  camelcase` → `"OrderStatus"`, capital `O`). For a single-word lowerCamelCase identifier, use
+  `lower` instead (`EntityName="Order"` → `{{ .EntityName | lower }}` = `order`). For a
+  multi-word lowerCamelCase identifier, compose the `lowerFirst` template function (lowercases
+  only the first rune) after `camelcase`: `{{ .EntityName | camelcase | lowerFirst }}`
+  (`"order_status"` → `"OrderStatus"` → `"orderStatus"`).
 - **`flag` is optional — omit it unless the kebab-case of `name` would make a poor CLI flag** (e.g.
   an abbreviation). Left unset, `learn` derives the flag automatically and writes it out explicitly
   in the generated `jig.yaml` either way, so a promoted draft needs no manual `flag:` edit to be
