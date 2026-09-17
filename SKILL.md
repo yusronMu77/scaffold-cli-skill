@@ -5,12 +5,14 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.5.1 (includes the anchor-based insert feature, #11, the
-> `init` command, #15, `flat_output` to skip the `<name>/` nesting, #53, and the full
-> `scaffold learn` family — single/multi-example inference, the `learn-review`/`learn-promote`
-> gate, match-before-learn with an uncertain-match band, `raw` (unrendered) draft files, hardened
-> secret redaction, and 2-positional `create` for a leaf-version scaffold). See
-> [Staying in sync](#staying-in-sync) below if your installed version disagrees.
+> Verified against `scaffold-cli` v0.6.0 (includes the anchor-based insert feature, #11, the
+> `init` command, #15, `flat_output` to skip the `<name>/` nesting, #53, `--skip-existing`
+> deep-merging a template's `merge:`-registered files instead of skipping them outright, #80, the
+> `learn-fields` command for pulling `data.entity.fields` straight from an existing Java class, #71,
+> and the full `scaffold learn` family — single/multi-example inference, the
+> `learn-review`/`learn-promote` gate, match-before-learn with an uncertain-match band, `raw`
+> (unrendered) draft files, hardened secret redaction, and 2-positional `create` for a leaf-version
+> scaffold). See [Staying in sync](#staying-in-sync) below if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -72,7 +74,7 @@ on Windows) for a project-scoped one. Substitute accordingly in every command be
 
 Both scripts fetch the right binary for the platform and verify its checksum; the global variant
 also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
-`SCAFFOLD_CLI_VERSION=v0.5.1` (env) / `-Version v0.5.1` (PowerShell) if the task needs a specific
+`SCAFFOLD_CLI_VERSION=v0.6.0` (env) / `-Version v0.6.0` (PowerShell) if the task needs a specific
 release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in
@@ -216,6 +218,17 @@ exist (`N file(s) already exist under <target>: ...`) rather than refusing the w
 just because the target directory itself is already there — two templates that share one `<name>`
 but write to non-overlapping paths no longer collide with each other's leftovers.
 
+**`--skip-existing` treats a template's `merge:`-registered files differently from a plain one.**
+A plain existing file is left untouched, matching the flag's name — but a file the template
+declares under `merge:` in its `jig.yaml` (e.g. `application.yml`, `pom.xml`, `requirements.txt`)
+is deep-merged with the copy already on disk instead of being skipped, so a second `create` against
+the same `--output` can still add a new dependency/config key without `--force` clobbering
+everything else already there. Merge format is inferred from the filename: `.yml`/`.yaml`/`.json`
+merge as structured documents (maps merge recursively, arrays replace wholesale, an explicit `null`
+deletes a key); `requirements.txt` merges by package name instead — a pinned version from the newer
+source replaces the older one for the same package, the existing file keeps its own line order and
+comments, and a package only the newer source lists is appended.
+
 ## 6. Grow and validate templates deliberately
 
 Applies to a project-owned `scaffolding-code` (step 2) as much as to `scaffold-templates` itself —
@@ -241,6 +254,21 @@ growing it well is deliberate work, not passive drift:
 Instead of hand-authoring a `jig.yaml` from scratch, point `learn` at one already-written example
 (a real controller, a CDK stack, any single instance of a pattern the project repeats) and it
 separates invariant structure from variable names/paths/fields — normally by calling an LLM once.
+
+**Already have a Java entity/POJO to scaffold from, rather than a whole example to `learn`?**
+`scaffold learn-fields <JavaFile.java>` extracts its field declarations with a regex heuristic —
+name, type, and whatever validation annotations sit directly above each field — and prints them as
+the `data.entity.fields` YAML a `-f` values file already supplies. No API key, no model call:
+
+```bash
+scaffold learn-fields src/main/java/com/example/Order.java > fields.yaml
+scaffold create <scaffold> <template> <name> -f fields.yaml -f base.yaml
+```
+
+It's a complement to `learn`, not a replacement — a regex heuristic, not a Java parser, so it only
+recognizes ordinary single-statement field declarations with at least one modifier. An irregular
+class (fields split across multiple statements, unusual modifier order, generated code) is still
+better served by `learn` itself.
 
 **Before scanning or inferring anything, `learn` checks whether an already-registered template's
 base shape (file names, directory structure) already matches the example folder.** On a confident
@@ -377,6 +405,12 @@ Rules for filling it in, same ones a provider call is instructed with:
   multi-word lowerCamelCase identifier, compose the `lowerFirst` template function (lowercases
   only the first rune) after `camelcase`: `{{ .EntityName | camelcase | lowerFirst }}`
   (`"order_status"` → `"OrderStatus"` → `"orderStatus"`).
+- **`plural` produces an English plural** (`{{ .EntityName | plural }}`: `"Order"` → `"Orders"`) for
+  a plural REST path/table/collection name — covers common suffix rules (consonant+`y`→`ies`,
+  `s`/`x`/`z`/`ch`/`sh`→`+es`, else `+s`) plus a small built-in irregular-word table (`child`→
+  `children`, `person`→`people`, and similar). Like `lowerFirst`, it's a `scaffold-cli` function,
+  not Sprig. It's a minimal table, not a full inflection engine — a word it gets wrong should be a
+  `computed` entry instead, with the literal correct plural as its value.
 - **`flag` is optional — omit it unless the kebab-case of `name` would make a poor CLI flag** (e.g.
   an abbreviation). Left unset, `learn` derives the flag automatically and writes it out explicitly
   in the generated `jig.yaml` either way, so a promoted draft needs no manual `flag:` edit to be

@@ -38,7 +38,8 @@ generated. Once loaded, it walks the agent through:
 4. Previewing before writing (`--dry-run` / `--print` / `--explain`)
 5. Generating (`scaffold create`)
 6. Growing templates deliberately (`scaffold lint [--build]`)
-7. Learning a template from an existing example (`scaffold learn` / `learn-review` / `learn-promote`)
+7. Learning a template from an existing example (`scaffold learn` / `learn-review` /
+   `learn-promote`; `scaffold learn-fields` for a Java entity's fields, no model call needed)
 
 To confirm it's wired up, just ask the agent to scaffold something (e.g. "generate a new Spring
 Boot service") and check that it reaches for `scaffold list`/`scaffold create` instead of writing
