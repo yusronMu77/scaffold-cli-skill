@@ -23,7 +23,10 @@ agent's global skills folder the same way, e.g. `~/.claude/skills/scaffold-cli`.
 
 There's no separate release to track — `main` is always current. To update later, `git pull`
 inside the cloned folder (see `SKILL.md`'s
-[Staying in sync](SKILL.md#staying-in-sync) section for what else can go stale).
+[Staying in sync](SKILL.md#staying-in-sync) section for what else can go stale), or point your
+agent at the bundled
+[`update-scaffold-cli-skill`](.claude/skills/update-scaffold-cli-skill/SKILL.md) skill to do that
+for you and report what changed.
 
 ## Use it
 
