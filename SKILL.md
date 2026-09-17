@@ -285,6 +285,46 @@ fired per file, never the secret text itself. This doesn't apply to `--draft`: w
 draft directly, you already read the raw files yourself and nothing left the machine, so there's
 nothing to redact against.
 
+**Choosing a local model for the human-without-agent path.** These four (as of 2026-09) cover the
+size/quality/license tradeoffs for `--provider=openai --base-url=http://localhost:11434/v1` (Ollama,
+or any other OpenAI-compatible local endpoint) — this is only for a human running `learn` with no
+agent involved; Claude Code and other agents already use `--draft` per the rule above.
+
+- `devstral:24b` — Apache 2.0, the only one of these four with a published SWE-Bench Verified score
+  (46.8%), the easiest one to justify to a team.
+- `gpt-oss:20b` — Apache 2.0, OpenAI's own open-weight release, runs CPU-only on 16GB RAM with no
+  GPU required.
+- `qwen3-coder:30b` — strongest coding quality per VRAM of the four, but needs a 24GB+ GPU or a 32GB
+  Mac.
+- `granite4:8b` — IBM, trained specifically for tool-use and structured JSON output, fits on small
+  machines.
+
+This is documentation for filling in `--base-url`/`--model`, not new engine behavior — none of it
+changes which flags exist.
+
+**Vetting a new model or provider before adopting it as the team default.** A public benchmark like
+HumanEval or SWE-Bench measures general coding ability, not the specific thing `learn` needs from a
+model — reliably separating invariant structure from variable names/paths/fields in one pass. Keep
+a small eval-set instead: 2-3 example folders with already-known-clean `learn-review` results, run
+against any new model/provider candidate before trusting it as a default.
+
+1. **A single-file pattern with one concept in several casings** — e.g. a small class whose name
+   appears as PascalCase, kebab-case, and camelCase across its content and filename. Clean: the
+   draft has exactly one `variables` entry for that concept (never a separate variable per casing —
+   see "one variable per concept" above), and `learn-review` reports zero mismatches.
+2. **A multi-file example with a value that must stay literal** — e.g. a fixed port number or a
+   config key that happens to look variable-ish but is identical across every real instance. Clean:
+   that value stays in the draft's file `content` unchanged rather than getting lifted into
+   `variables`; an over-eager model fails this one by inventing a variable for it.
+3. **An example with a file that must NOT be templated** — a `.gitignore`-style file, or one written
+   in a foreign templating language (Jinja, ERB, Handlebars). Clean: the draft uses `target:` (for
+   the reserved-filename case) or `"raw": true` (for the foreign-syntax case) instead of running the
+   file through this engine's own `{{ }}` templating.
+
+A candidate passes when `learn-review` reports clean against all 2-3 examples under the same rules
+documented above, not just "didn't crash" — the byte-comparison is what catches a hallucinated or
+dropped variable mechanically, no second model call needed to judge it.
+
 **A draft's file `path`s are relative to the scanned example folder itself, not the destination the
 template will eventually write to once registered.** Don't bake a real project's destination prefix
 (e.g. a per-instance nested subdirectory) into a draft's own `path`s — `learn-review` compares the
