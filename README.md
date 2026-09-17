@@ -22,8 +22,9 @@ That makes it available to one project. For every project on the machine instead
 agent's global skills folder the same way, e.g. `~/.claude/skills/scaffold-cli`.
 
 There's no separate release to track — `main` is always current. To update later, `git pull`
-inside the cloned folder (see `SKILL.md`'s
-[Staying in sync](SKILL.md#staying-in-sync) section for what else can go stale).
+inside the cloned folder, or point your agent at `SKILL.md`'s
+[Updating an installed copy](SKILL.md#updating-an-installed-copy) steps to do that for you and
+report what changed (see [Staying in sync](SKILL.md#staying-in-sync) for what else can go stale).
 
 ## Use it
 

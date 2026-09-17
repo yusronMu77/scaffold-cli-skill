@@ -550,9 +550,32 @@ don't trust an exact flag or output shape here over reality — run `scaffold --
 output. The engine's own flags (`--dry-run`/`--print`/`--explain`/`--output`/`--scaffolding-code`/
 etc.) change rarely, but a mismatch is a reason to check, not to assume.
 
+### Updating an installed copy
+
+This repo has no release process of its own — `main` is always current, and updating means
+fast-forwarding the installed folder to it:
+
+1. Locate the installed copy — the same global-vs-project-scoped resolution as step 1 above (e.g.
+   `~/.claude/skills/scaffold-cli` or `<project>/.claude/skills/scaffold-cli`). Confirm it's really
+   this skill: `git -C <skill-dir> remote get-url origin` should be
+   `https://github.com/yusronMu77/scaffold-cli-skill(.git)`.
+2. Refuse to touch it if it has local changes — `git -C <skill-dir> status --porcelain`. A modified
+   installed copy is likely an intentional local override; stop and ask rather than overwriting it.
+3. Record the current "Verified against" line and `git -C <skill-dir> rev-parse HEAD`, then:
+   ```bash
+   git -C <skill-dir> fetch origin
+   git -C <skill-dir> merge --ff-only origin/main
+   ```
+   `--ff-only` fails loudly instead of creating a merge commit if the installed copy has diverged —
+   don't force-resolve that; stop and tell the user instead.
+4. Report what changed: `git -C <skill-dir> log <old-sha>..HEAD --oneline`, and the new "Verified
+   against" line. If the pulled version now names a newer `scaffold-cli` than what's actually
+   installed, point back at step 1 above (the install script) to update the *binary* too — this
+   only updates the skill's own files.
+
 If you're maintaining this skill (not just using it) and `scaffold-cli`'s actual CLI surface has
 drifted from what's documented above, edit this file directly, bump the "Verified against" line,
-and `git push` — `git pull` in an existing install picks it up, no release process needed.
+and open a PR — an update per the steps above is what carries the change to every install.
 
 ## Reference
 
