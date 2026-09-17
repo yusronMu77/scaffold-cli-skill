@@ -196,6 +196,14 @@ anchors the template author already declared; `scaffold-cli` has no way to disco
 insertion point in a file it doesn't know about, so don't assume it can add a route to a file with
 no such rule — say so instead of hand-editing the file to compensate.
 
+For a Java file that was never `create`-generated in the first place (so it has no scaffold-cli
+anchor at all), `scaffold-cli` deliberately has no fallback of its own — adding one (e.g.
+OpenRewrite's AST-based `JavaTemplate`/`Recipe` mechanism) would pull a JVM dependency into a
+single-binary Go CLI. If the team already has OpenRewrite (or `rewrite-maven-plugin`) in their own
+Java toolchain, that's a reasonable external tool to point them at for splicing scaffold-cli's
+generated snippet into that file safely — not something `scaffold-cli` invokes or depends on
+itself.
+
 If the target template declares `flat_output: true` in its `jig.yaml`, `create` writes straight
 into `--output` (default `.`) instead of nesting under `<output>/<name>/` — for a template whose
 own `files:` `target`s are already fully-qualified relative to the project root (e.g. laying files
