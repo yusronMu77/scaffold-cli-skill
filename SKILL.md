@@ -1,6 +1,6 @@
 ---
 name: scaffold-cli
-description: Use scaffold-cli to browse and generate standardized projects (Spring Boot services/libs/parent-POMs today, more scaffolds later) from the scaffold-templates repo. Use whenever asked to scaffold, generate, or bootstrap a new service/library/project from these templates, or to add a route/insert into a file scaffold-cli already generated.
+description: Use scaffold-cli to browse and generate standardized projects (Spring Boot services/libs/parent-POMs today, more scaffolds later) from the scaffold-templates repo. Use whenever asked to scaffold, generate, or bootstrap a new service/library/project from these templates, or to add a route/insert into a file scaffold-cli already generated. Skip if there's no existing scaffold to draw from and the request is to generate a whole new app or architecture from scratch — however it's phrased, a full PRD, a short brief, or a one-line prompt — write the first real instance by hand instead, then use the `learn` flow (section 7) once a genuine repeat exists.
 ---
 
 # scaffold-cli
@@ -153,6 +153,11 @@ scaffold list                        # known scaffolds
 scaffold list <scaffold>             # versions, templates, optional dimensions for it
 scaffold list <scaffold> <template>  # full selector tree + every variable the template declares
 ```
+
+`scaffold list` is always the first move on any new request, however it's phrased — a full
+requirement doc, a short brief, or just a one-line prompt — for both new and existing projects.
+Use it to decide between `create` directly, when a matching scaffold already exists, or the
+manual-first-then-`learn` path (section 7), when it doesn't.
 
 ## 4. Preview before writing anything
 
