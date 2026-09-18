@@ -154,7 +154,10 @@ it writes the files for real and then echoes their exact final content, includin
 full post-splice content (the "Spliced into N existing file(s)" case) — the one thing a
 write-nothing `--print` preview couldn't show on its own, and previously the one legitimate reason
 to re-open a generated file afterward. Once its output looks right, the files are correct, full
-stop; re-reading them confirms nothing it didn't already show.
+stop; re-reading them confirms nothing it didn't already show. Concretely: after `--print-written`
+(or `--print`), do not `Read` the newly created files back one by one to confirm them — for an
+N-file template that's N extra round trips buying zero new information, the single most expensive
+habit this section exists to rule out.
 
 A plain `--dry-run`/`--print` pass (no write) is still the right call when the invocation itself is
 still uncertain — e.g. unsure which flags will resolve, and not ready to write yet. Once you are
