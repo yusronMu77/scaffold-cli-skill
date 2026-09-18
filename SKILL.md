@@ -5,15 +5,17 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.6.0 (includes the anchor-based insert feature, #11, the
+> Verified against `scaffold-cli` v0.7.0 (includes the anchor-based insert feature, #11, the
 > `init` command, #15, `flat_output` to skip the `<name>/` nesting, #53, `--skip-existing`
 > deep-merging a template's `merge:`-registered files instead of skipping them outright, #80, the
 > `learn-fields` command for pulling `data.entity.fields` straight from an existing Java class, #71,
-> and the full `scaffold learn` family — single/multi-example inference, the
+> the full `scaffold learn` family — single/multi-example inference, the
 > `learn-review`/`learn-promote` gate, match-before-learn with an uncertain-match band, `raw`
 > (unrendered) draft files, hardened secret redaction, and 2-positional `create` for a leaf-version
-> scaffold). See [Staying in sync](references/setup.md#staying-in-sync) if your installed version
-> disagrees.
+> scaffold — and, new in v0.7.0, `create --print-written` to write and echo every file's exact
+> final content in one call, plus `list <scaffold> --full` to expand every template's tree and
+> variables in one response, both from #91). See
+> [Staying in sync](references/setup.md#staying-in-sync) if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
@@ -40,13 +42,16 @@ flag is a hard error, not a silent no-op. Always browse first instead of guessin
 ```bash
 scaffold list                        # known scaffolds
 scaffold list <scaffold>             # versions, templates, optional dimensions for it
+scaffold list <scaffold> --full      # same, plus every template's own tree and variables
 scaffold list <scaffold> <template>  # full selector tree + every variable the template declares
 ```
 
 `scaffold list` is always the first move on any new request, however it's phrased — a full
 requirement doc, a short brief, or just a one-line prompt — for both new and existing projects.
 Use it to decide between `create` directly, when a matching scaffold already exists, or the
-manual-first-then-`learn` path (`references/learning-templates.md`), when it doesn't.
+manual-first-then-`learn` path (`references/learning-templates.md`), when it doesn't. Reach for
+`--full` over separate per-template `list` calls once more than one template is a real candidate
+for the request — it collapses what would otherwise be one round trip per template into one.
 
 ## 3. Preview before writing anything
 
@@ -62,6 +67,12 @@ the outcome isn't already obvious from `list`:
 ```bash
 scaffold create <scaffold> <template> <name> --dry-run [--flag=value ...]
 ```
+
+`--print-written` is a fourth option that behaves differently from the three above: it actually
+writes the files (same as a plain `create`) and then echoes their exact final content in the same
+response — one round trip that gets both the write and a verifiable transcript, instead of a
+`--print` pass followed by a separate `create`. It cannot be combined with
+`--dry-run`/`--print`/`--explain`.
 
 ## 4. Generate
 
