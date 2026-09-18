@@ -17,12 +17,6 @@ Many shells reset environment variables and PATH between commands but keep the w
 so exporting PATH once and expecting it to still apply on the next command doesn't work — invoke
 the binary by a path that's still valid on its own instead.
 
-On Windows specifically, a Bash tool and a PowerShell/pwsh tool available in the same agent session
-don't necessarily share one PATH — a binary that resolves in one can come back "command not found"
-in the other, even for something already installed (e.g. `git`), not just something this skill just
-installed. If a command here fails in whichever shell tool you tried first, retry it in the other
-before assuming the install itself failed or burning further attempts in the failing one.
-
 **Global:**
 
 ```bash
