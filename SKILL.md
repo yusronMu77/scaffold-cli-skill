@@ -148,17 +148,19 @@ deletes a key); `requirements.txt` merges by package name instead — a pinned v
 source replaces the older one for the same package, the existing file keeps its own line order and
 comments, and a package only the newer source lists is appended.
 
-**The `--print` output already is the verification — re-reading the same files after `create`
-confirms nothing it didn't already show.** `--print` renders the exact byte content `create` is
-about to write; once that output looks right, the files are correct, full stop. Treat a
-`--dry-run`/`--print` pass followed by one `create` as the complete, expected shape of a normal
-invocation — not a first attempt to double-check afterward. Re-opening a generated file, or running
-a second dry-run pass, is only justified to check something the preview genuinely couldn't
-show — e.g. confirming an anchor splice landed in the right place inside a pre-existing file (the
-"Spliced into N existing file(s)" case above), not re-confirming content `--print` already
-rendered. If a requirement was ambiguous, resolve that ambiguity *before* the dry-run (by reading
-the relevant source files or asking), not by re-checking `create`'s output after the fact — a clean
-dry-run means the generation step is done.
+**`create --print-written` is the complete verification, in one call — nothing after it needs
+re-checking.** Reach for it by default over the older `--dry-run`/`--print`-then-`create` two-step:
+it writes the files for real and then echoes their exact final content, including a spliced file's
+full post-splice content (the "Spliced into N existing file(s)" case) — the one thing a
+write-nothing `--print` preview couldn't show on its own, and previously the one legitimate reason
+to re-open a generated file afterward. Once its output looks right, the files are correct, full
+stop; re-reading them confirms nothing it didn't already show.
+
+A plain `--dry-run`/`--print` pass (no write) is still the right call when the invocation itself is
+still uncertain — e.g. unsure which flags will resolve, and not ready to write yet. Once you are
+ready, `--print-written` replaces both that preview and any post-write check in a single round
+trip. If a requirement was ambiguous, resolve that ambiguity *before* generating (by reading the
+relevant source files or asking), not by re-checking the output after the fact.
 
 ## Reference
 
