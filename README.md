@@ -22,25 +22,32 @@ That makes it available to one project. For every project on the machine instead
 agent's global skills folder the same way, e.g. `~/.claude/skills/scaffold-cli`.
 
 There's no separate release to track — `main` is always current. To update later, `git pull`
-inside the cloned folder, or point your agent at `SKILL.md`'s
-[Updating an installed copy](SKILL.md#updating-an-installed-copy) steps to do that for you and
-report what changed (see [Staying in sync](SKILL.md#staying-in-sync) for what else can go stale).
+inside the cloned folder, or point your agent at
+[Updating an installed copy](references/setup.md#updating-an-installed-copy) to do that for you and
+report what changed (see [Staying in sync](references/setup.md#staying-in-sync) for what else can
+go stale).
 
 ## Use it
 
 You don't invoke this skill directly — your agent reads `SKILL.md`'s frontmatter `description`
 and loads the full file itself whenever a task matches: scaffolding/generating a new
 service/library/project from `scaffold-templates`, or inserting into a file `scaffold-cli` already
-generated. Once loaded, it walks the agent through:
+generated. `SKILL.md` itself only covers the common per-task path, so an already-set-up project
+doesn't load dead weight on every invocation:
 
-1. Checking/installing `scaffold-cli` itself
-2. Resolving `scaffold-templates`
-3. Discovering what's available (`scaffold list`)
-4. Previewing before writing (`--dry-run` / `--print` / `--explain`)
-5. Generating (`scaffold create`)
-6. Growing templates deliberately (`scaffold lint [--build]`)
-7. Learning a template from an existing example (`scaffold learn` / `learn-review` /
-   `learn-promote`; `scaffold learn-fields` for a Java entity's fields, no model call needed)
+1. Checking prerequisites (`scaffold --version`; full install/setup only on demand, from
+   `references/setup.md`)
+2. Discovering what's available (`scaffold list`)
+3. Previewing before writing (`--dry-run` / `--print` / `--explain`)
+4. Generating (`scaffold create`)
+
+Two things are pushed into reference files, loaded only when actually needed:
+
+- `references/setup.md` — installing `scaffold-cli`, resolving `scaffold-templates`, and staying in
+  sync with a newer release
+- `references/learning-templates.md` — growing templates deliberately (`scaffold lint [--build]`)
+  and learning a template from an existing example (`scaffold learn` / `learn-review` /
+  `learn-promote`; `scaffold learn-fields` for a Java entity's fields, no model call needed)
 
 To confirm it's wired up, just ask the agent to scaffold something (e.g. "generate a new Spring
 Boot service") and check that it reaches for `scaffold list`/`scaffold create` instead of writing
