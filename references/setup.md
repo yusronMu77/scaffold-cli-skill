@@ -17,6 +17,11 @@ Many shells reset environment variables and PATH between commands but keep the w
 so exporting PATH once and expecting it to still apply on the next command doesn't work — invoke
 the binary by a path that's still valid on its own instead.
 
+On Windows, prefer the PowerShell/pwsh tool for every command in this file and skip Bash entirely
+— Git Bash on Windows frequently lacks coreutils (`find`/`grep`/`tail`/`ls`/`sort` all fail with
+"command not found"), a known `claude-code` issue (anthropics/claude-code#62537), not something
+worth debugging per-session. Only reach for Bash if PowerShell is genuinely unavailable.
+
 **Global:**
 
 ```bash
