@@ -186,6 +186,19 @@ scaffold create -f base.yaml -f prod.yaml --name=payment-canary   # -f repeats, 
 A command-line flag always beats a values file. Prefer a values file over a long flag list once
 there are more than two or three variables to set.
 
+**Don't set up a folder convention for values files preemptively** — same "extract, don't
+anticipate" discipline step 6 applies to templates themselves. A throwaway, uncommitted values
+file (or plain `--flag=value` args) is fine until one of these shows up: the same flag combination
+has been reused 2-3+ times against the same scaffold, two or more repos need to generate the same
+recipe, or a composite feature spans multiple sequential `create` calls whose values files together
+form a replayable "feature manifest." Once a trigger hits, mirror `scaffold-templates`' own
+`values/<scaffold>/<name>.yaml` shape (see its README) rather than inventing a new one, placed
+alongside `scaffolding-code/` — not inside it, since it's project state describing invocations, not
+template source. Commit it like any other project source.
+
+A values file isn't portable across repos whose `scaffolding-code` has diverged (step 2) — solve
+the sharing-model question first; values-file conventions only layer on top of it.
+
 If `scaffold list <scaffold>` reports "no templates dimension - this version is itself the
 template; omit `<template>`", that scaffold's resolved version is a **leaf**: `create` takes
 exactly 2 positionals for it, `scaffold create <scaffold> <name>`, not 3 — don't pass a dummy
