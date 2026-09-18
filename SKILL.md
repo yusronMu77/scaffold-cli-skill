@@ -148,11 +148,17 @@ deletes a key); `requirements.txt` merges by package name instead — a pinned v
 source replaces the older one for the same package, the existing file keeps its own line order and
 comments, and a package only the newer source lists is appended.
 
-**Bound how much self-verification is "enough."** One `--dry-run` (or `--print`/`--explain`) pass
-followed by one `create` is normally sufficient once the dry-run output looks right. Only re-read
-the generated files afterward, or run an extra dry-run pass, when verifying against genuinely
-ambiguous or non-obvious requirements — not as a routine habit on every invocation, since it adds
-tool calls and tokens without changing the outcome on the common case.
+**The `--print` output already is the verification — re-reading the same files after `create`
+confirms nothing it didn't already show.** `--print` renders the exact byte content `create` is
+about to write; once that output looks right, the files are correct, full stop. Treat a
+`--dry-run`/`--print` pass followed by one `create` as the complete, expected shape of a normal
+invocation — not a first attempt to double-check afterward. Re-opening a generated file, or running
+a second dry-run pass, is only justified to check something the preview genuinely couldn't
+show — e.g. confirming an anchor splice landed in the right place inside a pre-existing file (the
+"Spliced into N existing file(s)" case above), not re-confirming content `--print` already
+rendered. If a requirement was ambiguous, resolve that ambiguity *before* the dry-run (by reading
+the relevant source files or asking), not by re-checking `create`'s output after the fact — a clean
+dry-run means the generation step is done.
 
 ## Reference
 
