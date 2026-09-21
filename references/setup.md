@@ -62,7 +62,7 @@ on Windows) for a project-scoped one. Substitute accordingly in every command be
 
 Both scripts fetch the right binary for the platform and verify its checksum; the global variant
 also puts it on PATH (the project-scoped one deliberately doesn't — see above). Pin a version with
-`SCAFFOLD_CLI_VERSION=v0.7.0` (env) / `-Version v0.7.0` (PowerShell) if the task needs a specific
+`SCAFFOLD_CLI_VERSION=v0.8.0` (env) / `-Version v0.8.0` (PowerShell) if the task needs a specific
 release. Anything else (a manual archive from the
 [Releases page](https://github.com/yusronMu77/scaffold-cli/releases), or building from source with
 `go build -o scaffold .` inside a clone of the repo) only if the install scripts aren't usable in

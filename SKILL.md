@@ -5,7 +5,7 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 
 # scaffold-cli
 
-> Verified against `scaffold-cli` v0.7.0 (includes the anchor-based insert feature, #11, the
+> Verified against `scaffold-cli` v0.8.0 (includes the anchor-based insert feature, #11, the
 > `init` command, #15, `flat_output` to skip the `<name>/` nesting, #53, `--skip-existing`
 > deep-merging a template's `merge:`-registered files instead of skipping them outright, #80, the
 > `learn-fields` command for pulling `data.entity.fields` straight from an existing Java class, #71,
@@ -14,8 +14,11 @@ description: Use scaffold-cli to browse and generate standardized projects (Spri
 > (unrendered) draft files, hardened secret redaction, and 2-positional `create` for a leaf-version
 > scaffold — and, new in v0.7.0, `create --print-written` to write and echo every file's exact
 > final content in one call, plus `list <scaffold> --full` to expand every template's tree and
-> variables in one response, both from #91). See
-> [Staying in sync](references/setup.md#staying-in-sync) if your installed version disagrees.
+> variables in one response, both from #91 — and, new in v0.8.0, `--prompt-addendum=<path>` /
+> `learn_prompt_addendum:` in `.scaffold.yaml` to append project-specific guidance to `learn`'s
+> built-in system prompt, from #96; see `references/learning-templates.md` for that and for the
+> documented recipe to feed a real-usage correction back into an already-registered template).
+> See [Staying in sync](references/setup.md#staying-in-sync) if your installed version disagrees.
 
 `scaffold-cli` is a dependency-free Go binary that renders projects from a separate templates
 repo, [scaffold-templates](https://github.com/yusronMu77/scaffold-templates). Nothing is
