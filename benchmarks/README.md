@@ -96,6 +96,38 @@ this harness assumes from that orchestration:
    (file/content checks), so trials don't need to compile or run anything, which keeps them fast
    and keeps "did it use the skill" the only thing under test.
 
+## Setup (isolated Python environment)
+
+The scripts below (`grade.py`, `analyze.py`, `setup_sandbox.py`) only use the Python standard
+library — no third-party packages — but still run them from an isolated virtual environment rather
+than the system/global Python, so this harness never depends on (or pollutes) whatever else happens
+to be installed on the machine running it.
+
+If [`uv`](https://docs.astral.sh/uv/) is available, prefer it — it's faster and doesn't need a
+separate activation step:
+
+```
+cd benchmarks
+uv venv
+uv run scripts/grade.py <iteration-dir>
+uv run scripts/analyze.py <input.json>
+uv run scripts/setup_sandbox.py <config.json>
+```
+
+Without `uv`, fall back to the standard library's own `venv`:
+
+```
+cd benchmarks
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+source .venv/bin/activate   # macOS/Linux
+python scripts/grade.py <iteration-dir>
+python scripts/analyze.py <input.json>
+python scripts/setup_sandbox.py <config.json>
+```
+
+Every command example further down in this README assumes one of these two is already active.
+
 ## Grading
 
 ```
