@@ -90,6 +90,17 @@ mutually exclusive — `learn` rejects combining them rather than silently ignor
 `--response-format=tool|json_schema` additionally picks how the `openai` provider asks for
 structured JSON back, only for a model that rejects forced tool_choice.
 
+**`--prompt-addendum=<path>` (or `learn_prompt_addendum:` in `.scaffold.yaml`) only reaches the
+live-provider path, never `--draft`.** It appends a file's content to `learn`'s built-in system
+prompt — project-specific guidance such as an extra reserved word or a domain naming convention —
+for the human-without-agent invocation below. Since an agent always uses `--draft` per the rule
+above, the flag never has anything to attach to on that path; `learn` rejects `--prompt-addendum`
+combined with `--draft` outright rather than silently ignoring it. If a project has
+`learn_prompt_addendum:` configured, an agent doesn't pass the flag — it reads that same file
+itself (it's just a plain text/markdown file, no special format) and folds its guidance into its
+own reasoning the same way it already applies every other rule in this document, before writing
+the `--draft` JSON.
+
 **Only that live-provider-call path redacts secrets before sending anything externally** — before
 the scanned content reaches the model, `learn` replaces secret-shaped values (API keys, tokens,
 private key blocks, credentials embedded in a URL, etc.) with placeholders and reports which rule
