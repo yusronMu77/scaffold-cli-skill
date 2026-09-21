@@ -53,6 +53,13 @@ To confirm it's wired up, just ask the agent to scaffold something (e.g. "genera
 Boot service") and check that it reaches for `scaffold list`/`scaffold create` instead of writing
 boilerplate by hand. The full instructions the agent follows are in [SKILL.md](SKILL.md).
 
+## Benchmarking
+
+[`benchmarks/`](benchmarks/) has the reproducible methodology and scripts for measuring this
+skill's token/time/tool-call cost against a hand-written baseline (grading, sandboxing, power
+calculation, bootstrap CI) — see issue [#30](https://github.com/yusronMu77/scaffold-cli-skill/issues/30)
+for the history of re-benchmarks that led to formalizing it.
+
 ## Related
 
 - [scaffold-cli](https://github.com/yusronMu77/scaffold-cli) — the engine this skill drives.
