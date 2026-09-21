@@ -328,3 +328,31 @@ also checked structurally — it must have the same set of files as the draft's 
 being ignored.
 
 `learn-promote` afterward is unchanged: `scaffold learn-promote <draft-dir>`.
+
+## Feeding a correction back into an already-registered template
+
+If you (or a human) hand-corrected the output of a `create`-generated project — fixing a bug that
+turned out to be in the template itself, not just this one instance — fold that fix back into the
+template using the exact same multi-path mechanism above, no separate command or flag:
+
+```bash
+scaffold learn <corrected-project-folder> <template's-original-example-folder> --output=<scratch-dir>
+```
+
+**Order matters, and it's the opposite of "which one is older":** the corrected folder goes
+**first**, since a variable's default is always drawn from the first path — this makes the fix
+authoritative. The template's original reference example goes **second**, purely as a structural
+sanity check (same set of file paths; its actual content is never compared). This is the same
+"first path drives defaults, later paths check structure only" rule as the general multi-example
+case above — a correction is just a multi-example `learn` where one instance happens to be a fix.
+
+Go through `learn-review`/`learn-promote` exactly as always afterward — a correction gets zero
+special treatment or shortcut through that gate. This matters because a "correction" you *think*
+you made might actually be an environment or tooling artifact rather than a real template bug (the
+same class of false positive `scaffold-cli-skill`'s own benchmark harness has hit) — the review
+step is what catches that before a bad "fix" reaches every future `create` of this template.
+
+Don't invent automatic detection of "this looks like a correction" from a diff, a benchmark
+failure, or any other signal — recognizing that an edit is a genuine template-level fix (and not
+just this one instance's own quirk) needs your own judgment. This is deliberately a
+human/agent-recognized trigger, not something scanned for automatically.
